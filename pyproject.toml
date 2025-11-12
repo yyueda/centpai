@@ -1,0 +1,25 @@
+[project]
+name = "centpai"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "yyueda",email = "yyuedaa@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi[standard] (>=0.121.1,<0.122.0)",
+    "httpx (>=0.28.1,<0.29.0)",
+    "pydantic-settings (>=2.12.0,<3.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+packages = [
+    { include = "centpai", from = "src" }
+]
+package-mode = false
