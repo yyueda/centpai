@@ -16,6 +16,7 @@ class MessageEntity(BaseModel):
     type: str
     offset: int
     length: int
+    user: User | None = None
 
 class Message(BaseModel):
     message_id: int
