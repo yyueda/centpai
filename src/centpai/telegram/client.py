@@ -39,7 +39,7 @@ class TelegramAPI:
             if not data.get("ok"):
                 raise RuntimeError(f"Telegram API error: send message failed, {data.get('description')}")
             
-            return data["result"]
+            return data
         except Exception as e:
             logger.exception(f"Failed to send Telegram message: {e}")
             raise
@@ -61,5 +61,12 @@ class TelegramAPI:
         except Exception as e:
             logger.exception(f"Failed to set Telegram webhook: {e}")
             raise
+    
+    async def get_updates(self, offset=None):
+        params = {
+            "offset": offset,
+        }
+        r = await self._client.get(f"/getUpdates", params=params)
+        return r.json()
 
 tg = TelegramAPI(settings.BOT_TOKEN)

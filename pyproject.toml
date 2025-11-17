@@ -24,4 +24,4 @@ build-backend = "poetry.core.masonry.api"
 packages = [
     { include = "centpai", from = "src" }
 ]
-package-mode = false
+package-mode = true
