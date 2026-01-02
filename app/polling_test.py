@@ -2,8 +2,8 @@ import asyncio
 import httpx
 import time
 
-from centpai.telegram.client import tg
-from centpai.telegram.schemas import Update
+from telegram.client import tg
+from telegram.schemas import Update
 
 async def main():
     print("Polling...")
