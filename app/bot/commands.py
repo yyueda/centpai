@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import List
 
-from centpai.telegram.schemas import Message, MessageEntity
+from telegram.schemas import Message, MessageEntity
 
 @dataclass
 class Command:
