@@ -1,6 +1,5 @@
 import httpx
 import logging
-from centpai.config import settings
 from typing import Any, Dict
 
 logger = logging.getLogger("telegram")
