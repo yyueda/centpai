@@ -48,6 +48,7 @@ class TelegramAPI:
             logger.exception(f"Failed to send Telegram message: {e}")
             raise
 
+    # A secret token to be sent in a header “X-Telegram-Bot-Api-Secret-Token” in every webhook request, 1-256 characters. Only characters A-Z, a-z, 0-9, _ and - are allowed. The header is useful to ensure that the request comes from a webhook set by you.
     async def set_webhook(self, url: str, secret_token: str) -> Dict[str, Any]:
         payload = {
             "url": url,
@@ -73,7 +74,7 @@ class TelegramAPI:
         r = await self._client.get(f"/getUpdates", params=params)
         return r.json()
 
-    async def send_welcome_message(self, chat_id:str):
+    async def send_welcome_message(self, chat_id: int):
         text = (
             "Welcome to Centpai!\n\n"
             "Tap a button below to get started:"

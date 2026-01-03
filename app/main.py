@@ -1,8 +1,8 @@
 from typing import Union
 from fastapi import FastAPI, Request
-from logging_config import setup_logging
-from telegram import client
-from config import settings
+from core.logging import setup_logging
+from features.telegram import client
+from core.config import settings
 
 setup_logging()
 app = FastAPI()
