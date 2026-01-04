@@ -24,6 +24,9 @@ class Chat(Base):
     payments: Mapped[list["Payment"]] = relationship(
         back_populates="chat", cascade="all, delete-orphan"
     )
+    balances: Mapped[list["Balance"]] = relationship(
+        back_populates="chat", cascade="all, delete-orphan"
+    )
 
 class User(Base):
     __tablename__ = "users"
@@ -43,6 +46,9 @@ class User(Base):
     )
     received_payments: Mapped[list["Payment"]] = relationship(
         back_populates="to_user", foreign_keys="Payment.to_user_id"
+    )
+    balances: Mapped[list["Balance"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
     )
 
 class ChatMember(Base):
@@ -117,6 +123,7 @@ class Payment(Base):
     to_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
 
     amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     chat: Mapped["Chat"] = relationship(back_populates="payments")
     from_user: Mapped["User"] = relationship(
@@ -125,3 +132,22 @@ class Payment(Base):
     to_user: Mapped["User"] = relationship(
         back_populates="received_payments", foreign_keys=[to_user_id]
     )
+
+class Balance(Base):
+    """
+    Net balance per user per chat
+    """
+    __tablename__ = "balances"
+    __table_args__ = (
+        UniqueConstraint("chat_id", "user_id", name="uq_chat_balance"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    chat_id: Mapped[int] = mapped_column(ForeignKey("chats.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), ondelete="CASCADE", index=True)
+
+    balance: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    chat: Mapped["Chat"] = relationship(back_populates="balances")
+    user: Mapped["User"] = relationship(back_populates="balances")
