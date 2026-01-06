@@ -5,5 +5,6 @@ class Settings(BaseSettings):
 
     BOT_TOKEN: str
     DATABASE_URL: str
+    NGROK_URL: str
 
 settings = Settings() # type: ignore

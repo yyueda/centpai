@@ -166,7 +166,7 @@ class TelegramAPI:
         await self.send_message(chat_id=chat_id, text=text, reply_markup=keyboard)
     
     async def answer_callback_query(self, callback_query_id: str, text: str | None = None, show_alert: bool = False, url: str | None = None, cache_time: int = 0):
-        payload = {
+        payload: dict[str, Any] = {
             "callback_query_id": callback_query_id
         }
 

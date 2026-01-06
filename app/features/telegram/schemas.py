@@ -25,6 +25,24 @@ class Message(BaseModel):
     text: str | None = None
     entities: List[MessageEntity] | None = None
 
+class ChatMember(BaseModel):
+    status: str
+
+class ChatMemberUpdated(BaseModel):
+    chat: Chat
+    from_: User = Field(alias="from")
+    date: int
+    old_chat_member: ChatMember
+    new_chat_member: ChatMember
+
+class CallbackQuery(BaseModel):
+    id: str
+    from_: User = Field(alias="from")
+    message: Message | None = None
+    data: str | None = None
+
 class Update(BaseModel):
     update_id: int
     message: Message | None = None
+    my_chat_member: ChatMemberUpdated | None = None
+    callback_query: CallbackQuery | None = None
