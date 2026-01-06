@@ -12,7 +12,7 @@ setup_logging()
 async def lifespan(app: FastAPI):
     tg = client.TelegramAPI(settings.BOT_TOKEN)
     await tg.set_webhook(
-        url="https://0e5d760fddfa.ngrok-free.app/webhook", 
+        url=settings.NGROK_URL, 
         secret_token="test_secret")
     app.state.telegram = tg
     yield
