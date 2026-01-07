@@ -1,11 +1,51 @@
 import httpx
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional
 import collections
 
 logger = logging.getLogger("telegram")
 
 BASE = "https://api.telegram.org"
+
+COMMANDS_TEXT = (
+    "📋 Commands\n"
+    "────────────────────\n\n"
+
+    "👥 Administrative\n"
+    "/help — show this help message\n"
+    "/join — register yourself in this group\n"
+    "/leave — leave the current group\n"
+    "/members — list members in this chat\n"
+    "/add @user — add a member\n"
+    "/remove @user — remove a member\n"
+    "/home — view group status and net balances\n\n"
+
+    "💰 Expenses\n"
+    "/expense_view — view all expenses breakdown\n"
+    "/expense_add <Category> <Amount> [split rule] — add an expense\n"
+    "  Example: /expense_add Dinner 48.50\n\n"
+    "/expense_remove <Expense ID> — remove an expense by ID\n\n"
+    "/pay @user <amount> — record a payment you made to a user\n"
+    "  Example: /pay @John 25\n\n"
+
+    "🔀 Split Rules (optional)\n"
+    "If omitted, expense is split equally among everyone.\n\n"
+
+    "• Equal split (default):\n"
+    "  /expense_add Dinner 48.50\n\n"
+
+    "• Equal split among selected users:\n"
+    "  @John @Ben @Calvin @Dylan\n\n"
+
+    "• Exact amounts:\n"
+    "  @John=10 @Ben=20 @Dylan=18.5\n\n"
+
+    "• Percentages:\n"
+    "  @John=50% @Ben=50%\n\n"
+
+    "• Shares:\n"
+    "  @John=2 @Ben=1 @Dylan=1\n"
+)
 
 class TelegramAPI:
     def __init__(self, token: str, timeout: float = 10.0):
@@ -13,6 +53,11 @@ class TelegramAPI:
         self._client = httpx.AsyncClient(base_url=self.base, timeout=timeout)
         self.group = collections.defaultdict(set)
         self.expenses = collections.defaultdict(int)
+        self.commands = [
+            {"command": "help", "description": "Show help and examples"},
+            {"command": "join", "description": "Join this group"},
+            {"command": "leave", "description": "Leave the group"},
+        ]
     
     async def aclose(self) -> None:
         """Close the underlying HTTP client (e.g. on shutdown)."""
@@ -24,7 +69,7 @@ class TelegramAPI:
         text: str, 
         reply_to_message_id: int | None = None,
         reply_markup: dict | None=None,
-        parse_mode: str | None = "HTML"
+        parse_mode: str | None=None
     ) -> Dict[str, Any]:
         
         payload: Dict[str, Any] = {
@@ -80,29 +125,8 @@ class TelegramAPI:
     async def send_welcome_message(self, chat_id: int):
         text = (
             "Welcome to Centpai!\n\n"
-            "Tap a button below to get started:"
-        )
-
-        keyboard = {
-            "inline_keyboard": [
-                [
-                    {"text": "Join Group", "callback_data": "join_group"}
-                ],
-                [
-                    {"text": "How it works", "callback_data": "how_it_works"}
-                ]
-            ]
-        }
-
-        await self.send_message(chat_id=chat_id, text=text, reply_markup=keyboard)
-    
-    async def send_group_message(self, chat_id: int):
-        current_members = self.group[chat_id]
-        text = (
-            "Welcome to Centpai!\n\n"
-            "Current members:\n"
-            + "\n".join(f"• {member}" for member in current_members) +
-            "\n\nExpenses:\n"
+            "Tap a button below or enter a command to get started:\n\n"
+            + COMMANDS_TEXT
         )
 
         keyboard = {
@@ -114,57 +138,45 @@ class TelegramAPI:
                     {"text": "Leave Group", "callback_data": "leave_group"}
                 ],
                 [
-                    {"text": "Add Expense", "callback_data": "add_expense"}
+                    {"text": "View Expenses Breakdown", "callback_data": "view_expenses_breakdown"}
                 ],
                 [
-                    {"text": "Remove Expense", "callback_data": "remove_expense"}
-                ],
-                [
-                    {"text": "Settle Up", "callback_data": "settle_up"}
-                ],
-                [
-                    {"text": "How it works", "callback_data": "how_it_works"}
+                    {"text": "Help", "callback_data": "help"}
                 ]
             ]
         }
 
         await self.send_message(chat_id=chat_id, text=text, reply_markup=keyboard)
     
-
-    async def send_expense_message(self, chat_id: int):
+    async def send_home_message(self, chat_id: int):
         current_members = self.group[chat_id]
         text = (
             "Welcome to Centpai!\n\n"
             "Current members:\n"
             + "\n".join(f"• {member}" for member in current_members) +
-            "\n\nExpenses:\n"
+            "\nStatus:\n"
         )
 
         keyboard = {
             "inline_keyboard": [
                 [
-                    {"text": "Food & Drink", "callback_data": "add_fooddrink_expense"}
+                    {"text": "Join Group", "callback_data": "join_group"}
                 ],
                 [
-                    {"text": "Transport", "callback_data": "add_transport_expense"}
+                    {"text": "Leave Group", "callback_data": "leave_group"}
                 ],
                 [
-                    {"text": "Accomodation", "callback_data": "add_accomodation_expense"}
+                    {"text": "View Expenses Breakdown", "callback_data": "view_expenses_breakdown"}
                 ],
                 [
-                    {"text": "Entertainment", "callback_data": "add_entertainment_expense"}
-                ],
-                [
-                    {"text": "Shopping", "callback_data": "add_shopping_expense"}
-                ],
-                [
-                    {"text": "Others", "callback_data": "add_others_expense"}
+                    {"text": "Help", "callback_data": "help"}
                 ]
             ]
         }
 
         await self.send_message(chat_id=chat_id, text=text, reply_markup=keyboard)
     
+
     async def answer_callback_query(self, callback_query_id: str, text: str | None = None, show_alert: bool = False, url: str | None = None, cache_time: int = 0):
         payload: dict[str, Any] = {
             "callback_query_id": callback_query_id
@@ -180,6 +192,20 @@ class TelegramAPI:
             payload["cache_time"] = cache_time
         
         await self._client.post(f"/answerCallbackQuery", json=payload)
+    
+
+    async def setMyCommands(self, commands:List[Dict[str, str]], scope: Optional[Dict[str, Any]] = None, language_code: Optional[str] = None):
+        
+        payload: dict[str, Any] = {
+            "commands": commands
+        }
+
+        if scope:
+            payload["scope"] = scope
+        if language_code:
+            payload["language_code"] = language_code
+        
+        await self._client.post(f"/setMyCommands", json=payload)
     
     def add_user_to_group(self, username: str, chat_id: int):
         self.group[chat_id].add(username)
