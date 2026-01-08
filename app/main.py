@@ -57,6 +57,11 @@ async def read_webhook(update: Update, request: Request):
                 tg.remove_user_from_group(username=username, chat_id=chat_id)
                 await tg.send_message(chat_id=chat_id, text=f"{username} left the group.")
                 await tg.send_home_message(chat_id=chat_id)
+            elif command == "/expense_add":
+                status, message = tg.add_expense(chat_id=chat_id, args=args)
+                await tg.send_message(chat_id=chat_id, text=message)
+            elif command == "/expense_view":
+                await tg.send_expense_view_message(chat_id)
 
             return {"ok": True}
 

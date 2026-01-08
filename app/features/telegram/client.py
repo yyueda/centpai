@@ -2,6 +2,7 @@ import httpx
 import logging
 from typing import Any, Dict, List, Optional
 import collections
+import uuid
 
 logger = logging.getLogger("telegram")
 
@@ -52,11 +53,13 @@ class TelegramAPI:
         self.base = f"{BASE}/bot{token}"
         self._client = httpx.AsyncClient(base_url=self.base, timeout=timeout)
         self.group = collections.defaultdict(set)
-        self.expenses = collections.defaultdict(int)
+        self.expenses = collections.defaultdict(dict)
         self.commands = [
             {"command": "help", "description": "Show help and examples"},
             {"command": "join", "description": "Join this group"},
             {"command": "leave", "description": "Leave the group"},
+            {"command": "expense_add", "description": "Add an expense"},
+            {"command": "expense_view", "description": "View all expenses"},
         ]
     
     async def aclose(self) -> None:
@@ -213,3 +216,46 @@ class TelegramAPI:
 
     def remove_user_from_group(self, username: str, chat_id: int):
         self.group[chat_id].discard(username)
+
+    def is_group_empty(self, chat_id: int):
+        if len(self.group[chat_id]) == 0:
+            return True
+
+        return False
+
+    def add_expense(self, chat_id: int, args: str):
+        if (self.is_group_empty(chat_id)):
+            return [False, "You cannot enter an expense until there is at least 1 person in your group."]
+        
+        args = args.split()
+        uid = uuid.uuid4().hex[:8]
+
+        if len(args) == 2:
+            try:
+                price = float(args[1])
+            except:
+                return [False, "Enter an appropriate price amount."]
+            self.expenses[chat_id][uid] = {
+                "category": args[0],
+                "price": price,
+            }
+            #calculate and add to group
+            return [True, "Expense added."]
+
+        return [False, "Try again."]
+
+
+    async def send_expense_view_message(self, chat_id: int):
+        current_expenses = self.expenses.get(chat_id, {})
+        if not current_expenses:
+            text = "No expenses added yet."
+        else:
+            expense_lines = []
+            for uid, expense in current_expenses.items():
+                category = expense["category"]
+                price = expense["price"]
+                expense_lines.append(f"• {uid} | {category} — ${price:.2f}")
+
+            text = "Current expenses:\n" + "\n".join(expense_lines)
+
+        await self.send_message(chat_id, text)
