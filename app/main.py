@@ -5,11 +5,13 @@ from features.telegram.schemas import Update
 from core.logging import setup_logging
 from features.telegram import client
 from core.config import settings
+from db.database import init_db
 
 setup_logging()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    await init_db()
     tg = client.TelegramAPI(settings.BOT_TOKEN)
     await tg.setMyCommands(tg.commands)
     await tg.set_webhook(
