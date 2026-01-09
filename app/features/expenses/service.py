@@ -1,3 +1,5 @@
+from decimal import Decimal
+from app.features.expenses.dto import ExpenseDTO
 from app.features.expenses.repo import ExpensesRepository
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,29 +13,84 @@ class ExpensesService:
     # ------------------------------------------------------------------
 
     # Executed when bot is first added: initialise new data in db
-    async def init(
-        self,
-        tg_chat_id: int,
-        tg_user_id: int,
-        username: str | None = None,
-        first_name: str | None = None,
-        last_name: str | None = None,
+    async def add_member(
+        self, 
+        tg_chat_id: int, 
+        tg_user_id: int, 
+        **user_fields
     ) -> None:
         await self.db.begin()
 
         try:
-            chat = await self.repo.get_or_create_chat(tg_chat_id)
-            user = await self.repo.get_or_create_user(
-                tg_user_id,
-                username=username,
-                first_name=first_name,
-                last_name=last_name,
-            )
-
-            await self.repo.add_member(chat.id, user.id)
-            await self.repo.create_balance(chat.id, user.id)
-        except:
+            await self._ensure_member_and_balance(tg_chat_id, tg_user_id, **user_fields)
+        except Exception:
             await self.db.rollback()
             raise
         else:
             await self.db.commit()
+
+    async def _ensure_member_and_balance(
+        self, 
+        tg_chat_id: int, 
+        tg_user_id: int, 
+        **user_fields
+    ) -> None:
+        chat = await self.repo.get_or_create_chat(tg_chat_id)
+        user = await self.repo.get_or_create_user(tg_user_id, **user_fields)
+        await self.repo.add_member(chat.id, user.id)
+        await self.repo.create_balance(chat.id, user.id)
+
+    # ------------------------------------------------------------------
+    # EXPENSES
+    # ------------------------------------------------------------------
+
+    async def add_expense(
+        self,
+        tg_chat_id: int, 
+        tg_user_id: int,
+        amount: Decimal,
+        desc: str
+    ) -> None:
+        await self.db.begin()
+
+        try:
+            user = await self.repo.get_user_by_tg_id(tg_user_id)
+            if not user:
+                raise ValueError("User not registered.")
+            
+            chat = await self.repo.get_chat_by_tg_id(tg_chat_id)
+            if not chat:
+                raise ValueError("Invalid chat.")
+            
+            is_member = await self.repo.is_member(chat.id, user.id)
+            if not is_member:
+                raise ValueError("User not a member yet. Use /join first.")
+            
+            # TODO: Create splits + update balance
+            await self.repo.create_expense(chat.id, user.id, amount, desc)
+        except Exception:
+            await self.db.rollback()
+            raise
+        else:
+            await self.db.commit()
+    
+    async def get_expenses(self, tg_chat_id: int) -> list[ExpenseDTO]:
+        chat = await self.repo.get_chat_by_tg_id(tg_chat_id)
+        if not chat:
+            raise ValueError("Invalid chat.")
+        
+        # Get last 10 expenses
+        expenses_list = await self.repo.list_expenses(chat.id, 10)
+
+        return [
+            ExpenseDTO(
+                paid_by=(
+                    expense.payer.username
+                    if expense.payer.username
+                    else expense.payer.first_name
+                ),
+                amount=expense.amount,
+                desc=expense.description,
+                created_at=expense.created_at
+
+        ) for expense in expenses_list]
