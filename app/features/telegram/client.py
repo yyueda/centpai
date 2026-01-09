@@ -1,6 +1,6 @@
 import httpx
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Protocol
 import collections
 import uuid
 
@@ -47,6 +47,18 @@ COMMANDS_TEXT = (
     "• Shares:\n"
     "  @John=2 @Ben=1 @Dylan=1\n"
 )
+
+# Interface for easier testing
+class Messenger(Protocol):
+    async def send_message(
+        self,
+        chat_id: int,
+        text: str,
+        reply_to_message_id: int | None = None,
+        reply_markup: dict | None = None,
+        parse_mode: str | None = None,
+    ) -> dict[str, Any]:
+        ...
 
 class TelegramAPI:
     def __init__(self, token: str, timeout: float = 10.0):

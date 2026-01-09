@@ -1,11 +1,19 @@
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import List
 
 from app.features.telegram.schemas import Message, MessageEntity
 
-@dataclass
+class CommandName(StrEnum):
+    HELP = "/help"
+    JOIN = "/join"
+    LEAVE = "/leave"
+    EXPENSE_ADD = "/expense_add"
+    EXPENSE_VIEW = "/expense_view"
+
+@dataclass(frozen=True) # Immutable
 class Command:
-    name: str
+    name: CommandName
     args: List[str]
     args_text: str
     mentioned_user_ids: List[int]
@@ -45,7 +53,10 @@ def parse_command(message: Message) -> Command | None:
         return None
 
     raw_cmd = _slice_entity_text(text, cmd_entity)
-    name = raw_cmd.lstrip("/")
+    try:
+        cmd_name = CommandName(raw_cmd)
+    except ValueError:
+        return None
 
     args_utf16_offset = cmd_entity.offset + cmd_entity.length
     raw_args = _slice_from_utf16_offset(text, args_utf16_offset).lstrip()
@@ -65,7 +76,7 @@ def parse_command(message: Message) -> Command | None:
             mentioned_usernames.append(username)
 
     return Command(
-        name=name,
+        name=cmd_name,
         args=args,
         args_text=raw_args,
         mentioned_user_ids=mentioned_user_ids,

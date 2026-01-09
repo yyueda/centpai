@@ -21,7 +21,7 @@ class MessageEntity(BaseModel):
 class Message(BaseModel):
     message_id: int
     chat: Chat
-    from_: User | None = Field(default=None, alias="from")
+    from_: User = Field(alias="from")
     text: str | None = None
     entities: List[MessageEntity] | None = None
 
