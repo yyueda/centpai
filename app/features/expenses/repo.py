@@ -1,9 +1,11 @@
+from decimal import Decimal
 from typing import Iterable
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+from sqlalchemy.exc import IntegrityError
 
-from app.models.models import Balance, Chat, ChatMember, Expense, ExpenseSplit, Payment, User
+from app.features.expenses.models import Balance, Chat, ChatMember, Expense, ExpenseSplit, Payment, User
 
 class ExpensesRepository:
     def __init__(self, db: AsyncSession):
@@ -24,9 +26,18 @@ class ExpensesRepository:
 
         chat = Chat(telegram_chat_id=tg_chat_id)
         self.db.add(chat)
-        await self.db.flush()  # assigns chat.id
-        return chat
-    
+
+        try:
+            await self.db.flush()
+            return chat
+        except IntegrityError:
+           # another concurrent request inserted first
+            await self.db.rollback()
+            chat = await self.get_chat_by_tg_id(tg_chat_id)
+            if not chat:
+                raise
+            return chat
+        
     # ------------------------------------------------------------------
     # USERS
     # ------------------------------------------------------------------
@@ -53,8 +64,16 @@ class ExpensesRepository:
             last_name=last_name,
         )
         self.db.add(user)
-        await self.db.flush()  # assigns user.id
-        return user
+
+        try:
+            await self.db.flush() # assigns user.id
+            return user
+        except IntegrityError:
+            await self.db.rollback()
+            user = await self.get_user_by_tg_id(tg_user_id)
+            if not user:
+                raise
+            return user
     
     # ------------------------------------------------------------------
     # MEMBERS (ChatMember join table)
@@ -62,6 +81,11 @@ class ExpensesRepository:
 
     async def add_member(self, chat_id: int, user_id: int) -> None:
         self.db.add(ChatMember(chat_id=chat_id, user_id=user_id))
+        try:
+            await self.db.flush()
+        except IntegrityError:
+            # already a member
+            await self.db.rollback()
 
     async def remove_member(self, chat_id: int, tg_user_id: int) -> bool:
         stmt = select(ChatMember).where(
@@ -98,14 +122,19 @@ class ExpensesRepository:
     # EXPENSES
     # ------------------------------------------------------------------
 
-    async def create_expense(self, expense: Expense) -> Expense:
+    async def create_expense(self, expense: Expense) -> None:
         self.db.add(expense)
-        await self.db.flush()  # assigns expense.id
-        return expense
+        try:
+            await self.db.flush()  # assigns expense.id
+        except IntegrityError:
+            await self.db.rollback()
 
     async def add_splits(self, splits: Iterable[ExpenseSplit]) -> None:
         self.db.add_all(splits)
-        await self.db.flush()
+        try:
+            await self.db.flush()
+        except IntegrityError:
+            await self.db.rollback()
 
     async def list_expenses(self, chat_id: int, limit: int = 50) -> list[Expense]:
         stmt = (
@@ -125,10 +154,12 @@ class ExpensesRepository:
     # PAYMENTS
     # ------------------------------------------------------------------
 
-    async def create_payment(self, payment: Payment) -> Payment:
+    async def create_payment(self, payment: Payment) -> None:
         self.db.add(payment)
-        await self.db.flush() # assigns payment.id
-        return payment
+        try:
+            await self.db.flush()
+        except IntegrityError:
+            await self.db.rollback()
 
     async def list_payments(self, chat_id: int, limit: int = 100) -> list[Payment]:
         stmt = (
@@ -148,10 +179,23 @@ class ExpensesRepository:
     # BALANCES
     # ------------------------------------------------------------------
 
-    async def create_balance(self, balance: Balance) -> Balance:
-        self.db.add(balance)
-        await self.db.flush() # assigns balance.id
-        return balance
+    async def get_user_balance(self, chat_id: int, user_id: int) -> Balance | None:
+        stmt = select(Balance).where(Balance.chat_id == chat_id, Balance.user_id == user_id)
+        return await self.db.scalar(stmt)
+    
+    async def create_balance(self, chat_id: int, user_id: int) -> None:
+        bal = await self.get_user_balance(chat_id, user_id)
+        if bal:
+            return
+        
+        bal = Balance(chat_id=chat_id, user_id=user_id, balance=Decimal("0.00"))
+        self.db.add(bal)
+        try:
+            await self.db.flush()
+        except IntegrityError:
+            await self.db.rollback()
+
+        return
 
     async def list_balances(self, chat_id: int) -> list[Balance]:
         stmt = (
