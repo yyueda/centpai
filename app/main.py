@@ -1,11 +1,11 @@
 from contextlib import asynccontextmanager
 from typing import Union
 from fastapi import FastAPI, Request
-from features.telegram.schemas import Update
-from core.logging import setup_logging
-from features.telegram import client
-from core.config import settings
-from db.database import init_db
+from app.features.telegram.schemas import Update
+from app.core.logging import setup_logging
+from app.features.telegram import client
+from app.core.config import settings
+from app.db.database import init_db
 
 setup_logging()
 
