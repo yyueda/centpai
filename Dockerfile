@@ -22,10 +22,8 @@ WORKDIR /code
 
 COPY --from=builder ${VIRTUAL_ENV} ${VIRTUAL_ENV}
 
-COPY .env .env
-
 COPY app ./app
 
 EXPOSE 80
 
-ENTRYPOINT ["fastapi", "run", "app/main.py", "--port", "80"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "80", "--workers", "2"]
