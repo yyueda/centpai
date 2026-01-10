@@ -1,7 +1,10 @@
 from decimal import Decimal
+from app.core.errors import DomainError
 from app.features.expenses.dto import ExpenseDTO
+from app.features.expenses.errors import ChatNotFound, NotMember, ServerError, UserNotRegistered
 from app.features.expenses.repo import ExpensesRepository
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
 
 class ExpensesService:
     def __init__(self, db: AsyncSession, repo: ExpensesRepository):
@@ -23,9 +26,9 @@ class ExpensesService:
 
         try:
             await self._ensure_member_and_balance(tg_chat_id, tg_user_id, **user_fields)
-        except Exception:
+        except IntegrityError as e:
             await self.db.rollback()
-            raise
+            raise ServerError() from e
         else:
             await self.db.commit()
 
@@ -56,19 +59,22 @@ class ExpensesService:
         try:
             user = await self.repo.get_user_by_tg_id(tg_user_id)
             if not user:
-                raise ValueError("User not registered.")
+                raise UserNotRegistered()
             
             chat = await self.repo.get_chat_by_tg_id(tg_chat_id)
             if not chat:
-                raise ValueError("Invalid chat.")
+                raise ChatNotFound()
             
             is_member = await self.repo.is_member(chat.id, user.id)
             if not is_member:
-                raise ValueError("User not a member yet. Use /join first.")
+                raise NotMember()
             
             # TODO: Create splits + update balance
             await self.repo.create_expense(chat.id, user.id, amount, desc)
-        except Exception:
+        except IntegrityError as e:
+            await self.db.rollback()
+            raise ServerError() from e  
+        except DomainError:
             await self.db.rollback()
             raise
         else:
@@ -77,7 +83,7 @@ class ExpensesService:
     async def get_expenses(self, tg_chat_id: int) -> list[ExpenseDTO]:
         chat = await self.repo.get_chat_by_tg_id(tg_chat_id)
         if not chat:
-            raise ValueError("Invalid chat.")
+            raise ChatNotFound()
         
         # Get last 10 expenses
         expenses_list = await self.repo.list_expenses(chat.id, 10)

@@ -130,7 +130,7 @@ class ExpensesRepository:
         chat_id: int, 
         user_id: int, 
         amount: Decimal, 
-        description: str = ""
+        description: str
     ) -> None:
         self.db.add(Expense(
             chat_id=chat_id,
