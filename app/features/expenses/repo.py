@@ -4,13 +4,20 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import IntegrityError
+from fastapi import Depends
 
+from app.db.database import get_session
 from app.features.expenses.models import Balance, Chat, ChatMember, Expense, ExpenseSplit, Payment, User
+
+
+def get_repo(session: AsyncSession = Depends(get_session)) -> "ExpensesRepository":
+        return ExpensesRepository(session)
+
 
 class ExpensesRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
-
+    
     # ------------------------------------------------------------------
     # CHATS
     # ------------------------------------------------------------------

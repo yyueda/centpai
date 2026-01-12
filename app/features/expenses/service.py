@@ -7,9 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 
 class ExpensesService:
-    def __init__(self, db: AsyncSession, repo: ExpensesRepository):
-        self.db = db
+    def __init__(self, repo: ExpensesRepository):
         self.repo = repo
+        self.db = repo.db
 
     # ------------------------------------------------------------------
     # MEMBERSHIP/INIT
