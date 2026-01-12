@@ -1,15 +1,18 @@
 from decimal import Decimal
+
+from fastapi import Depends
 from app.core.errors import DomainError
 from app.features.expenses.dto import ExpenseDTO
 from app.features.expenses.errors import ChatNotFound, NotMember, ServerError, UserNotRegistered
-from app.features.expenses.repo import ExpensesRepository
-from sqlalchemy.ext.asyncio import AsyncSession
+from app.features.expenses.repo import ExpensesRepository, get_repo
 from sqlalchemy.exc import IntegrityError
+
+def get_service(repo: "ExpensesRepository" = Depends(get_repo)) -> "ExpensesService":
+    return ExpensesService(repo)
 
 class ExpensesService:
     def __init__(self, repo: ExpensesRepository):
         self.repo = repo
-        self.db = repo.db
 
     # ------------------------------------------------------------------
     # MEMBERSHIP/INIT
@@ -22,15 +25,15 @@ class ExpensesService:
         tg_user_id: int, 
         **user_fields
     ) -> None:
-        await self.db.begin()
+        await self.repo.db.begin()
 
         try:
             await self._ensure_member_and_balance(tg_chat_id, tg_user_id, **user_fields)
         except IntegrityError as e:
-            await self.db.rollback()
+            await self.repo.db.rollback()
             raise ServerError() from e
         else:
-            await self.db.commit()
+            await self.repo.db.commit()
 
     async def _ensure_member_and_balance(
         self, 
@@ -54,7 +57,7 @@ class ExpensesService:
         amount: Decimal,
         desc: str
     ) -> None:
-        await self.db.begin()
+        await self.repo.db.begin()
 
         try:
             user = await self.repo.get_user_by_tg_id(tg_user_id)
@@ -72,13 +75,13 @@ class ExpensesService:
             # TODO: Create splits + update balance
             await self.repo.create_expense(chat.id, user.id, amount, desc)
         except IntegrityError as e:
-            await self.db.rollback()
+            await self.repo.db.rollback()
             raise ServerError() from e  
         except DomainError:
-            await self.db.rollback()
+            await self.repo.db.rollback()
             raise
         else:
-            await self.db.commit()
+            await self.repo.db.commit()
     
     async def get_expenses(self, tg_chat_id: int) -> list[ExpenseDTO]:
         chat = await self.repo.get_chat_by_tg_id(tg_chat_id)

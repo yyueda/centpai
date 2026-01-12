@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from typing import Union
 from fastapi import Depends, FastAPI, Request
 from app.features.expenses.repo import ExpensesRepository, get_repo
-from app.features.expenses.service import ExpensesService
+from app.features.expenses.service import ExpensesService, get_service
 from app.features.telegram.commands.admin import handleHelp, handleInit
 from app.features.telegram.commands.command_parser import CommandName, parse_command
 from app.features.telegram.commands.expenses import handleAddExpense, handleListExpenses
@@ -45,12 +45,10 @@ def read_root():
 async def read_webhook(
     request: Request,
     update: Update,
-    session: AsyncSession = Depends(get_session),
-    repo: ExpensesRepository = Depends(get_repo)
+    svc: ExpensesService = Depends(get_service),
 ):
     ctx = build_context_from_update(update)
     tg: client.TelegramAPI = request.app.state.telegram
-    svc = ExpensesService(repo)
 
     # For initial welcome message
     if update.my_chat_member:
