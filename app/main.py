@@ -8,17 +8,18 @@ from app.features.telegram.commands.command_parser import CommandName, parse_com
 from app.features.telegram.commands.expenses import handleAddExpense, handleListExpenses
 from app.features.telegram.commands.members import handleJoin
 from app.features.telegram.context import build_context_from_update
-from features.telegram.schemas import Update
-from core.logging import setup_logging
-from features.telegram import client
-from core.config import settings
-from db.database import get_session, init_db
+from app.features.telegram.schemas import Update
+from app.core.logging import setup_logging
+from app.features.telegram import client
+from app.core.config import settings
+from app.db.database import get_session, init_db, init_reset_db_dev
 from sqlalchemy.ext.asyncio import AsyncSession
 
 setup_logging()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # await init_reset_db_dev() #dev purposes
     await init_db()
 
     tg = client.TelegramAPI(settings.BOT_TOKEN)
