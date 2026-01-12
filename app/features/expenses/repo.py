@@ -85,8 +85,17 @@ class ExpensesRepository:
     # ------------------------------------------------------------------
 
     async def add_member(self, chat_id: int, user_id: int) -> None:
-        self.db.add(ChatMember(chat_id=chat_id, user_id=user_id))
-        await self.db.flush()
+        from sqlalchemy.dialects.postgresql import insert
+        stmt = (
+            insert(ChatMember)
+            .values(chat_id=chat_id, user_id=user_id)
+            .on_conflict_do_nothing(
+                index_elements=[ChatMember.chat_id, ChatMember.user_id]
+            )
+        )
+        await self.db.execute(stmt)
+        # self.db.add(ChatMember(chat_id=chat_id, user_id=user_id))
+        # await self.db.flush()
 
     async def remove_member(self, chat_id: int, tg_user_id: int) -> bool:
         stmt = select(User).where(
