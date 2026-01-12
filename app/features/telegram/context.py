@@ -13,6 +13,10 @@ class TgContext:
     text: str | None
 
 def build_context_from_update(u: Update) -> TgContext:
+    # if button is pressed
+    # if u.callback_query:
+    #     data = u.callback_query.data
+
     if u.message is None and u.my_chat_member is None:
         raise ValueError("Unsupported update")
     
