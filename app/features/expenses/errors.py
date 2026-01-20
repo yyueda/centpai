@@ -2,16 +2,15 @@ from app.core.errors import DomainError
 
 class NotMember(DomainError):
     def __init__(self):
-        super().__init__("You are not a member of this chat. Use /join first.", code="not_member")
+        super().__init__(message="You are not a member of this chat. Use /join first.", code="not_member")
 
 class UserNotRegistered(DomainError):
     def __init__(self):
-        super().__init__("User not registered yet.", code="user_not_registed")
-
+        super().__init__(message="User not registered yet.", code="user_not_registered")
 class ChatNotFound(DomainError):
     def __init__(self):
-        super().__init__("Chat not found.", code="chat_not_found")
+        super().__init__(message="Chat not found.", code="chat_not_found")
 
 class ServerError(DomainError):
     def __init__(self):
-        super().__init__("Error processing request. Please try again.", code="server_error")
+        super().__init__(message="Error processing request. Please try again.", code="server_error")
