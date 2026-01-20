@@ -55,6 +55,7 @@ async def handleListExpenses(
 ) -> None:
     try:
         expenses = await svc.get_expenses(ctx.tg_chat_id)
+        
     except DomainError as e:
         await messenger.send_message(
             ctx.tg_chat_id,

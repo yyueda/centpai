@@ -34,6 +34,37 @@ class ExpensesService:
             raise ServerError() from e
         else:
             await self.repo.db.commit()
+    
+
+    async def remove_member(
+            self,
+            tg_chat_id: int,
+            tg_user_id: int
+        ) -> None:
+        await self.repo.db.begin()
+
+        try:
+            user = await self.repo.get_user_by_tg_id(tg_user_id)
+            if not user:
+                raise UserNotRegistered()
+            
+            chat = await self.repo.get_chat_by_tg_id(tg_chat_id)
+            if not chat:
+                raise ChatNotFound()
+            
+            is_member = await self.repo.is_member(chat.id, user.id)
+            if not is_member:
+                raise NotMember()
+            
+            await self.repo.remove_member(chat.id, tg_user_id)
+        except IntegrityError as e:
+            await self.repo.db.rollback()
+            raise ServerError() from e  
+        except DomainError:
+            await self.repo.db.rollback()
+            raise 
+        else:
+            await self.repo.db.commit()
 
     async def _ensure_member_and_balance(
         self, 
@@ -103,3 +134,15 @@ class ExpensesService:
                 created_at=expense.created_at
 
         ) for expense in expenses_list]
+
+
+    async def get_members(self, tg_chat_id: int) -> list[str]:
+        chat = await self.repo.get_chat_by_tg_id(tg_chat_id)
+        if not chat:
+            raise ChatNotFound()
+        
+        members = await self.repo.list_members(chat.id)
+        return [
+            member.user.username if member.user.username else member.user.id  #TODO: we should make username nullable=False
+            for member in members
+        ]

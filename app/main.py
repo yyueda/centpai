@@ -6,7 +6,7 @@ from app.features.expenses.service import ExpensesService, get_service
 from app.features.telegram.commands.admin import handleHelp, handleInit
 from app.features.telegram.commands.command_parser import CommandName, parse_command
 from app.features.telegram.commands.expenses import handleAddExpense, handleListExpenses
-from app.features.telegram.commands.members import handleJoin
+from app.features.telegram.commands.members import handleJoin, handleLeave, handleListMembers
 from app.features.telegram.context import build_context_from_update
 from app.features.telegram.schemas import Update
 from app.core.logging import setup_logging
@@ -66,6 +66,10 @@ async def read_webhook(
 
         if command:
             match command.name:
+                case CommandName.MEMBERS:
+                    await handleListMembers(ctx, tg, svc)
+                case CommandName.LEAVE:
+                    await handleLeave(ctx, tg, svc)
                 case CommandName.HELP:
                     await handleHelp(ctx, tg)
                 case CommandName.JOIN:

@@ -5,6 +5,7 @@ from typing import List
 from app.features.telegram.schemas import Message, MessageEntity
 
 class CommandName(StrEnum):
+    MEMBERS = "/members"
     HELP = "/help"
     JOIN = "/join"
     LEAVE = "/leave"
