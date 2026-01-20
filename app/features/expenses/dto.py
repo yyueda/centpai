@@ -1,6 +1,12 @@
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
+from typing import List
+
+
+class ExpenseParticipantDTO:
+    username: str
+    amount_owed: Decimal
 
 
 @dataclass(frozen=True)
@@ -9,3 +15,4 @@ class ExpenseDTO:
     amount: Decimal
     desc: str
     created_at: datetime
+    participants: List[ExpenseParticipantDTO] = None

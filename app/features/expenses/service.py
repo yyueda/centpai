@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from fastapi import Depends
 from app.core.errors import DomainError
-from app.features.expenses.dto import ExpenseDTO
+from app.features.expenses.dto import ExpenseDTO, ExpenseParticipantDTO
 from app.features.expenses.errors import ChatNotFound, NotMember, ServerError, UserNotRegistered
 from app.features.expenses.repo import ExpensesRepository, get_repo
 from sqlalchemy.exc import IntegrityError
@@ -66,6 +66,7 @@ class ExpensesService:
         else:
             await self.repo.db.commit()
 
+
     async def _ensure_member_and_balance(
         self, 
         tg_chat_id: int, 
@@ -76,6 +77,18 @@ class ExpensesService:
         user = await self.repo.get_or_create_user(tg_user_id, **user_fields)
         await self.repo.add_member(chat.id, user.id)
         await self.repo.create_balance(chat.id, user.id)
+
+
+    async def get_members(self, tg_chat_id: int) -> list[str]:
+        chat = await self.repo.get_chat_by_tg_id(tg_chat_id)
+        if not chat:
+            raise ChatNotFound()
+        
+        members = await self.repo.list_members(chat.id)
+        return [
+            member.user.username if member.user.username else str(member.user.id)  # TODO: we should make username nullable=False
+            for member in members
+        ]
 
     # ------------------------------------------------------------------
     # EXPENSES
@@ -131,18 +144,13 @@ class ExpensesService:
                 ),
                 amount=expense.amount,
                 desc=expense.description,
-                created_at=expense.created_at
+                created_at=expense.created_at,
+                participants=[
+                    ExpenseParticipantDTO(
+                        username=split.user.username,
+                        amount_owed=split.amount
+                    )
+                    for split in expense.splits
+                ]
 
         ) for expense in expenses_list]
-
-
-    async def get_members(self, tg_chat_id: int) -> list[str]:
-        chat = await self.repo.get_chat_by_tg_id(tg_chat_id)
-        if not chat:
-            raise ChatNotFound()
-        
-        members = await self.repo.list_members(chat.id)
-        return [
-            member.user.username if member.user.username else member.user.id  #TODO: we should make username nullable=False
-            for member in members
-        ]
