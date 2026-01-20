@@ -1,6 +1,8 @@
 from app.features.expenses.service import ExpensesService
 from app.features.telegram.client import Messenger
 from app.features.telegram.context import TgContext
+from app.core.errors import DomainError
+from app.features.expenses.errors import ChatNotFound
 
 async def handleJoin(ctx: TgContext, messenger: Messenger, svc: ExpensesService) -> None:
     await svc.add_member(
@@ -18,17 +20,31 @@ async def handleJoin(ctx: TgContext, messenger: Messenger, svc: ExpensesService)
 
 
 async def handleListMembers(ctx: TgContext, messenger: Messenger, svc: ExpensesService) -> None:
-    members = await svc.get_members(ctx.tg_chat_id)
-    if members:
+    try:
+        members = await svc.get_members(ctx.tg_chat_id)
+
+        if members:
+            await messenger.send_message(
+                chat_id=ctx.tg_chat_id,
+                text="Current members:\n" + "\n".join(f"• {member}" for member in members),
+                reply_to_message_id=ctx.message_id
+            )
+        else:
+            await messenger.send_message(
+                chat_id=ctx.tg_chat_id,
+                text="No members found.",
+                reply_to_message_id=ctx.message_id
+            )
+    except ChatNotFound as e:
         await messenger.send_message(
             chat_id=ctx.tg_chat_id,
-            text="Current members:\n" + "\n".join(f"• {member}" for member in members),
+            text=f"{e.message}",
             reply_to_message_id=ctx.message_id
         )
-    else:
+    except DomainError as e:
         await messenger.send_message(
             chat_id=ctx.tg_chat_id,
-            text="No members found.",
+            text=f"{e.message}",
             reply_to_message_id=ctx.message_id
         )
 
