@@ -48,20 +48,7 @@ def parse_amount(amount: str) -> Decimal:
     except InvalidOperation:
         raise ValueError("Invalid amount format")
 
-# async def handleListExpenses(
-#     ctx: TgContext, 
-#     messenger: Messenger, 
-#     svc: ExpensesService
-# ) -> None:
-#     try:
-#         expenses = await svc.get_expenses(ctx.tg_chat_id)
 
-#     except DomainError as e:
-#         await messenger.send_message(
-#             ctx.tg_chat_id,
-#             e.message,
-#             ctx.message_id
-#         )
 async def handleListExpenses(ctx: TgContext, messenger: Messenger, svc: ExpensesService) -> None:
     try:
         expenses = await svc.get_expenses(ctx.tg_chat_id)
