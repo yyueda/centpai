@@ -12,7 +12,8 @@ async def handleJoin(ctx: TgContext, messenger: Messenger, svc: ExpensesService)
     )
     await messenger.send_message(
         chat_id=ctx.tg_chat_id, 
-        text=f"{ctx.username} joined."
+        text=f"{ctx.username} joined.",
+        reply_to_message_id=ctx.message_id
     )
 
 
@@ -39,5 +40,6 @@ async def handleLeave(ctx: TgContext, messenger: Messenger, svc: ExpensesService
     )
     await messenger.send_message(
         chat_id=ctx.tg_chat_id, 
-        text=f"{ctx.username} left."
+        text=f"{ctx.username} left.",
+        reply_to_message_id=ctx.message_id
     )
