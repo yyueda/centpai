@@ -19,8 +19,8 @@ setup_logging()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # await init_reset_db_dev() #dev purposes
-    await init_db()
+    await init_reset_db_dev() #dev purposes
+    # await init_db()
 
     tg = client.TelegramAPI(settings.BOT_TOKEN)
     await tg.setMyCommands(tg.commands)
@@ -48,6 +48,8 @@ async def read_webhook(
     svc: ExpensesService = Depends(get_service),
 ):
     ctx = build_context_from_update(update)
+    if ctx is None:
+        return {"ok": True}
     tg: client.TelegramAPI = request.app.state.telegram
 
     # For initial welcome message
