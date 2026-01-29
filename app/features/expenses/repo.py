@@ -1,4 +1,4 @@
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Iterable
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -148,12 +148,32 @@ class ExpensesRepository:
         amount: Decimal, 
         description: str
     ) -> None:
-        self.db.add(Expense(
+        
+        expense = Expense(
             chat_id=chat_id,
             payer_id=user_id,
             amount=amount,
             description=description
-        ))
+        )
+        self.db.add(expense)
+
+        # get all members of chat group
+        members = await self.list_members(chat_id)
+        # split equally
+        split_amount = Decimal(amount / len(members)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        # create splits
+        splits = [
+            ExpenseSplit(
+                user_id=member.user.id,
+                amount=split_amount,
+                expense=expense
+            )
+            for member in members if member.user.id != user_id
+        ]
+        
+        # call add_splits()
+        await self.add_splits(splits)
+
         await self.db.flush()  # assigns expense.id
 
     async def add_splits(self, splits: Iterable[ExpenseSplit]) -> None:
@@ -165,7 +185,7 @@ class ExpensesRepository:
             select(Expense)
             .where(Expense.chat_id == chat_id)
             .options(
-                selectinload(Expense.splits),      # loads splits for balance calc
+                selectinload(Expense.splits).selectinload(ExpenseSplit.user),      # loads splits for balance calc
                 selectinload(Expense.payer),       # optional: payer details
             )
             .order_by(Expense.created_at.desc())

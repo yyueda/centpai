@@ -26,10 +26,16 @@ async def handleAddExpense(
             amount,
             desc
         )
+
+        await messenger.send_message(
+            chat_id=ctx.tg_chat_id,
+            text="Expense added.",
+            reply_to_message_id=ctx.message_id
+        )
     except ValueError:
         await messenger.send_message(
             ctx.tg_chat_id,
-            "Please input a valid amount.",
+            "Please input a valid amount. Usage: /expense_add <amount> <desc>.",
             ctx.message_id
         )
     # Let telegram api retry
@@ -55,12 +61,16 @@ async def handleListExpenses(ctx: TgContext, messenger: Messenger, svc: Expenses
         if expenses:
             message_lines = ["Recent expenses:"]
             for exp in expenses:
-                #TODO: add participants info
-                message_lines.append(f"• {exp.paid_by} paid {exp.amount} for {exp.desc} on {exp.created_at.strftime('%Y-%m-%d')}")
+                participants = exp.participants
+                message = [f"• {exp.paid_by} paid {exp.amount} for {exp.desc} on {exp.created_at.strftime('%Y-%m-%d')}"]
+                for participant in participants:
+                    message.append(f"• {participant.username} owes {participant.amount_owed}")
+                
+                message_lines.append("\n".join(message))
 
             await messenger.send_message(
                 chat_id=ctx.tg_chat_id,
-                text="\n".join(message_lines),
+                text="\n\n".join(message_lines),
                 reply_to_message_id=ctx.message_id
             )
         else:

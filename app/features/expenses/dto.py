@@ -4,6 +4,7 @@ from decimal import Decimal
 from typing import List
 
 
+@dataclass
 class ExpenseParticipantDTO:
     username: str
     amount_owed: Decimal

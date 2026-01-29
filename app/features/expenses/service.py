@@ -116,7 +116,7 @@ class ExpensesService:
             if not is_member:
                 raise NotMember()
             
-            # TODO: Create splits + update balance
+            # TODO: Create splits + update balance in repo
             await self.repo.create_expense(chat.id, user.id, amount, desc)
         except IntegrityError as e:
             await self.repo.db.rollback()
