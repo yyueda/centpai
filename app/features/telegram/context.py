@@ -18,7 +18,8 @@ def build_context_from_update(u: Update) -> TgContext:
     #     data = u.callback_query.data
 
     if u.message is None and u.my_chat_member is None:
-        raise ValueError("Unsupported update")
+        return None
+        # raise ValueError("Unsupported update")
     
      # Defaults for update types that don't carry message
     message_id: int | None = None

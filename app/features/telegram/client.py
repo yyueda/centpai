@@ -100,6 +100,8 @@ class TelegramAPI:
         
         try:
             r = await self._client.post(f"/sendMessage", json=payload)
+            if not r.is_success:
+                logger.error(f"Telegram API error: {r.text}")  # Log the actual error
             r.raise_for_status()
             
             data = r.json()
