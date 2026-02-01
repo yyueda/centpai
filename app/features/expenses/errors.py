@@ -7,6 +7,7 @@ class NotMember(DomainError):
 class UserNotRegistered(DomainError):
     def __init__(self):
         super().__init__(message="User not registered yet.", code="user_not_registered")
+
 class ChatNotFound(DomainError):
     def __init__(self):
         super().__init__(message="Chat not found.", code="chat_not_found")

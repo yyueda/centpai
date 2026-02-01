@@ -12,8 +12,7 @@ from app.features.telegram.schemas import Update
 from app.core.logging import setup_logging
 from app.features.telegram import client
 from app.core.config import settings
-from app.db.database import get_session, init_db, init_reset_db_dev
-from sqlalchemy.ext.asyncio import AsyncSession
+from app.db.database import init_reset_db_dev
 
 setup_logging()
 
@@ -39,7 +38,6 @@ app = FastAPI(lifespan=lifespan)
 @app.get("/")
 def read_root():
     return {"Hello": "World"}
-
 
 @app.post("/webhook")
 async def read_webhook(

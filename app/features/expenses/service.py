@@ -137,11 +137,7 @@ class ExpensesService:
 
         return [
             ExpenseDTO(
-                paid_by=(
-                    expense.payer.username
-                    if expense.payer.username
-                    else expense.payer.first_name
-                ),
+                paid_by=expense.payer.username,
                 amount=expense.amount,
                 desc=expense.description,
                 created_at=expense.created_at,

@@ -38,9 +38,6 @@ async def handleAddExpense(
             "Please input a valid amount. Usage: /expense_add <amount> <desc>.",
             ctx.message_id
         )
-    # Let telegram api retry
-    except ServerError:
-        raise
     except DomainError as e:
         await messenger.send_message(
             ctx.tg_chat_id,
@@ -63,8 +60,9 @@ async def handleListExpenses(ctx: TgContext, messenger: Messenger, svc: Expenses
             for exp in expenses:
                 participants = exp.participants
                 message = [f"• {exp.paid_by} paid {exp.amount} for {exp.desc} on {exp.created_at.strftime('%Y-%m-%d')}"]
-                for participant in participants:
-                    message.append(f"• {participant.username} owes {participant.amount_owed}")
+                if participants:
+                    for participant in participants:
+                        message.append(f"• {participant.username} owes {participant.amount_owed}")
                 
                 message_lines.append("\n".join(message))
 
@@ -79,12 +77,6 @@ async def handleListExpenses(ctx: TgContext, messenger: Messenger, svc: Expenses
                 text="No expenses found.",
                 reply_to_message_id=ctx.message_id
             )
-    except ChatNotFound as e:
-        await messenger.send_message(
-            chat_id=ctx.tg_chat_id,
-            text=f"{e.message}",
-            reply_to_message_id=ctx.message_id
-        )
     except DomainError as e:
         await messenger.send_message(
             chat_id=ctx.tg_chat_id,

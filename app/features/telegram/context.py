@@ -6,13 +6,13 @@ from app.features.telegram.schemas import Update
 class TgContext:
     tg_chat_id: int
     tg_user_id: int
-    username: str | None
+    username: str
     first_name: str | None
     last_name: str | None
     message_id: int | None
     text: str | None
 
-def build_context_from_update(u: Update) -> TgContext:
+def build_context_from_update(u: Update) -> TgContext | None:
     # if button is pressed
     # if u.callback_query:
     #     data = u.callback_query.data
@@ -31,6 +31,9 @@ def build_context_from_update(u: Update) -> TgContext:
         user = msg.from_
         message_id = msg.message_id
         text = msg.text
+        # Username is compulsory
+        if user.username is None:
+            return None
     else:
         mcm = u.my_chat_member
         assert mcm is not None

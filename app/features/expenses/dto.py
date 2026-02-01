@@ -16,4 +16,4 @@ class ExpenseDTO:
     amount: Decimal
     desc: str
     created_at: datetime
-    participants: List[ExpenseParticipantDTO] = None
+    participants: List[ExpenseParticipantDTO] | None = None
