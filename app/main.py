@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from typing import Union
 from fastapi import Depends, FastAPI, Request
 from app.features.expenses.repo import ExpensesRepository, get_repo
@@ -82,34 +83,25 @@ async def read_webhook(
             return {"ok": True}
 
     # For button clicks
-    # if update.callback_query:
-    #     cq = update.callback_query
-    #     callback_id = cq.id
-    #     data = cq.data
+    if update.callback_query:
+        cq = update.callback_query
+        callback_id = cq.id
+        data = cq.data
 
-    #     # message can be None in some callback scenarios
-    #     if cq.message is None:
-    #         await tg.answer_callback_query(callback_query_id=callback_id, text="Unsupported action.")
-    #         return {"ok": True}
+        # message can be None in some callback scenarios
+        if cq.message is None:
+            await tg.answer_callback_query(callback_query_id=callback_id, text="Unsupported action.")
+            return {"ok": True}
 
-    #     chat_id = cq.message.chat.id
-    #     username = cq.from_.username
-
-    #     if data == "join_group":
-    #         tg.add_user_to_group(username=username, chat_id=chat_id)
-    #         await tg.send_message(chat_id=chat_id, text=f"{username} joined the group.")
-    #         await tg.send_home_message(chat_id=chat_id)
-    #     elif data == "leave_group":
-    #         tg.remove_user_from_group(username=username, chat_id=chat_id)
-    #         await tg.send_message(chat_id=chat_id, text=f"{username} left the group.")
-    #         await tg.send_home_message(chat_id=chat_id)
-    #     elif data == "help":
-    #         await tg.send_message(chat_id=chat_id, text="Centpai works like this: ...")
-        
-        
-    #     await tg.answer_callback_query(callback_query_id=callback_id)
-    
-
+        match data:
+            case "join_group":
+                await handleJoin(ctx, tg, svc)
+            case "leave_group":
+                await handleLeave(ctx, tg, svc)
+            case "view_expenses_breakdown":
+                await handleListExpenses(ctx, tg, svc)
+            case "help":
+                await handleHelp(ctx, tg)
             
     return {"ok": True}
 

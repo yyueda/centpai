@@ -38,7 +38,7 @@ class ChatMemberUpdated(BaseModel):
 class CallbackQuery(BaseModel):
     id: str
     from_: User = Field(alias="from")
-    message: Message | None = None
+    message: Message
     data: str | None = None
 
 class Update(BaseModel):

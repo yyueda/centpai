@@ -13,15 +13,7 @@ class TgContext:
     text: str | None
 
 def build_context_from_update(u: Update) -> TgContext | None:
-    # if button is pressed
-    # if u.callback_query:
-    #     data = u.callback_query.data
-
-    if u.message is None and u.my_chat_member is None:
-        return None
-        # raise ValueError("Unsupported update")
-    
-     # Defaults for update types that don't carry message
+    # Defaults for update types that don't carry message
     message_id: int | None = None
     text: str | None = None
 
@@ -34,11 +26,19 @@ def build_context_from_update(u: Update) -> TgContext | None:
         # Username is compulsory
         if user.username is None:
             return None
-    else:
+    # Button clicks
+    elif u.callback_query and u.callback_query.message:
+        cq = u.callback_query
+        chat = cq.message.chat
+        user = cq.from_
+        message_id = cq.message.message_id
+        text = cq.data
+    elif u.my_chat_member:
         mcm = u.my_chat_member
-        assert mcm is not None
         chat = mcm.chat
         user = mcm.from_
+    else:
+        return None
 
     return TgContext(
         tg_chat_id=chat.id,
