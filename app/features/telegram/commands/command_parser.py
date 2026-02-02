@@ -54,8 +54,10 @@ def parse_command(message: Message) -> Command | None:
         return None
 
     raw_cmd = _slice_entity_text(text, cmd_entity)
+    # Strip @botname suffix (e.g., "/help@mybot" -> "/help")
+    cmd_without_mention = raw_cmd.split("@")[0]
     try:
-        cmd_name = CommandName(raw_cmd)
+        cmd_name = CommandName(cmd_without_mention)
     except ValueError:
         return None
 
