@@ -193,6 +193,20 @@ class ExpensesRepository:
         )
         res = (await self.db.scalars(stmt)).all()
         return list(res)
+    
+
+    async def get_expense(self, chat_id: int, expense_id: int) -> Expense | None:
+        stmt = select(Expense).where(
+            Expense.id == expense_id,
+            Expense.chat_id == chat_id,
+        )
+
+        return await self.db.scalar(stmt)
+
+
+    async def remove_expense(self, expense: Expense) -> None:
+        await self.db.delete(expense)
+        await self.db.flush()
 
     # ------------------------------------------------------------------
     # PAYMENTS

@@ -11,6 +11,7 @@ class CommandName(StrEnum):
     LEAVE = "/leave"
     EXPENSE_ADD = "/expense_add"
     EXPENSE_VIEW = "/expense_view"
+    EXPENSE_REMOVE = "/expense_remove"
 
 @dataclass(frozen=True) # Immutable
 class Command:

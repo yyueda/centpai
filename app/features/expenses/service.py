@@ -3,7 +3,7 @@ from decimal import Decimal
 from fastapi import Depends
 from app.core.errors import DomainError
 from app.features.expenses.dto import ExpenseDTO, ExpenseParticipantDTO
-from app.features.expenses.errors import ChatNotFound, NotMember, ServerError, UserNotRegistered
+from app.features.expenses.errors import ChatNotFound, NotMember, ServerError, UserNotRegistered, ExpenseNotFoundError, ExpenseNotOwnedError
 from app.features.expenses.repo import ExpensesRepository, get_repo
 from sqlalchemy.exc import IntegrityError
 
@@ -137,6 +137,7 @@ class ExpensesService:
 
         return [
             ExpenseDTO(
+                id=expense.id,
                 paid_by=expense.payer.username,
                 amount=expense.amount,
                 desc=expense.description,
@@ -150,3 +151,37 @@ class ExpensesService:
                 ]
 
         ) for expense in expenses_list]
+
+
+    async def remove_expense(self, tg_chat_id: int, tg_user_id: int, expense_id: int) -> None:
+        await self.repo.db.begin()
+
+        try:
+            user = await self.repo.get_user_by_tg_id(tg_user_id)
+            if not user:
+                raise UserNotRegistered()
+            
+            chat = await self.repo.get_chat_by_tg_id(tg_chat_id)
+            if not chat:
+                raise ChatNotFound()
+            
+            is_member = await self.repo.is_member(chat.id, user.id)
+            if not is_member:
+                raise NotMember()
+            
+            expense = await self.repo.get_expense(chat.id, expense_id)
+            if expense is None:
+                raise ExpenseNotFoundError(expense_id)
+
+            if expense.payer_id != user.id:
+                raise ExpenseNotOwnedError(expense_id, user.username)
+
+            await self.repo.remove_expense(expense)
+        except IntegrityError as e:
+            await self.repo.db.rollback()
+            raise ServerError() from e  
+        except DomainError:
+            await self.repo.db.rollback()
+            raise
+        else:
+            await self.repo.db.commit()

@@ -52,6 +52,16 @@ def parse_amount(amount: str) -> Decimal:
         raise ValueError("Invalid amount format")
 
 
+def parse_id(id: str) -> int:
+    try:
+        value = int(id)
+        if value <= 0:
+            raise ValueError("ID must be positive")
+        return value
+    except ValueError:
+        raise ValueError("Invalid id format")
+
+
 async def handleListExpenses(ctx: TgContext, messenger: Messenger, svc: ExpensesService) -> None:
     try:
         expenses = await svc.get_expenses(ctx.tg_chat_id)
@@ -59,7 +69,7 @@ async def handleListExpenses(ctx: TgContext, messenger: Messenger, svc: Expenses
             message_lines = ["Recent expenses:"]
             for exp in expenses:
                 participants = exp.participants
-                message = [f"• {exp.paid_by} paid {exp.amount} for {exp.desc} on {exp.created_at.strftime('%Y-%m-%d')}"]
+                message = [f"• Expense ID ({exp.id}), {exp.paid_by} paid {exp.amount} for {exp.desc} on {exp.created_at.strftime('%Y-%m-%d')}"]
                 if participants:
                     for participant in participants:
                         message.append(f"• {participant.username} owes {participant.amount_owed}")
@@ -77,6 +87,34 @@ async def handleListExpenses(ctx: TgContext, messenger: Messenger, svc: Expenses
                 text="No expenses found.",
                 reply_to_message_id=ctx.message_id
             )
+    except DomainError as e:
+        await messenger.send_message(
+            chat_id=ctx.tg_chat_id,
+            text=f"{e.message}",
+            reply_to_message_id=ctx.message_id
+        )
+
+
+async def handleRemoveExpense(ctx: TgContext, messenger: Messenger, svc: ExpensesService, args: list[str]) -> None:
+    if not args:
+        await messenger.send_message(ctx.tg_chat_id, "Usage: /expense_remove <Expense ID>", reply_to_message_id=ctx.message_id)
+        return
+    
+    try:
+        expense_id = parse_id(args[0])
+        await svc.remove_expense(ctx.tg_chat_id, ctx.tg_user_id, expense_id)
+
+        await messenger.send_message(
+            chat_id=ctx.tg_chat_id,
+            text=f"Expense ({expense_id}) removed.",
+            reply_to_message_id=ctx.message_id
+        )
+    except ValueError as e:
+        await messenger.send_message(
+            chat_id=ctx.tg_chat_id,
+            text=f"{e.message}",
+            reply_to_message_id=ctx.message_id
+        )
     except DomainError as e:
         await messenger.send_message(
             chat_id=ctx.tg_chat_id,

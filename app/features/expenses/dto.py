@@ -12,6 +12,7 @@ class ExpenseParticipantDTO:
 
 @dataclass(frozen=True)
 class ExpenseDTO:
+    id: int
     paid_by: str
     amount: Decimal
     desc: str

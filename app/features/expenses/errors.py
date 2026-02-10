@@ -15,3 +15,11 @@ class ChatNotFound(DomainError):
 class ServerError(DomainError):
     def __init__(self):
         super().__init__(message="Error processing request. Please try again.", code="server_error")
+
+class ExpenseNotFoundError(DomainError):
+    def __init__(self, expense_id: int):
+        super().__init__(message=f"Expense ({expense_id}) not found")
+
+class ExpenseNotOwnedError(DomainError):
+    def __init__(self, expense_id: int, username: str):
+        super().__init__(message=f"Expense {expense_id} is not owned by {username}")
