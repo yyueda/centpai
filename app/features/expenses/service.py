@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from fastapi import Depends
 from app.core.errors import DomainError
-from app.features.expenses.dto import ExpenseDTO, ExpenseParticipantDTO
+from app.features.expenses.dto import ExpenseDTO, ExpenseParticipantDTO, BalanceDTO
 from app.features.expenses.errors import ChatNotFound, NotMember, ServerError, UserNotRegistered, ExpenseNotFoundError, ExpenseNotOwnedError
 from app.features.expenses.repo import ExpensesRepository, get_repo
 from sqlalchemy.exc import IntegrityError
@@ -185,3 +185,21 @@ class ExpensesService:
             raise
         else:
             await self.repo.db.commit()
+
+
+    # ------------------------------------------------------------------
+    # BALANCES
+    # --------------------------------------------------------------------
+    
+    async def get_balances(self, tg_chat_id: int) -> list[BalanceDTO]:
+        chat = await self.repo.get_chat_by_tg_id(tg_chat_id)
+        if not chat:
+            raise ChatNotFound()
+        
+        balances = await self.repo.list_balances(chat.id)
+
+        return [
+            BalanceDTO(
+                username=balance.user.username,
+                balance=balance.balance
+            ) for balance in balances]
