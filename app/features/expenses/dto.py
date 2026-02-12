@@ -4,7 +4,7 @@ from decimal import Decimal
 from typing import List
 
 
-@dataclass
+@dataclass(frozen=True)
 class ExpenseParticipantDTO:
     username: str
     amount_owed: Decimal
@@ -18,3 +18,9 @@ class ExpenseDTO:
     desc: str
     created_at: datetime
     participants: List[ExpenseParticipantDTO] | None = None
+
+
+@dataclass(frozen=True)
+class BalanceDTO:
+    username: str
+    balance: Decimal

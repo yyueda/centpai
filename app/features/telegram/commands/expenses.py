@@ -65,6 +65,7 @@ def parse_id(id: str) -> int:
 async def handleListExpenses(ctx: TgContext, messenger: Messenger, svc: ExpensesService) -> None:
     try:
         expenses = await svc.get_expenses(ctx.tg_chat_id)
+        balances = await svc.get_balances(ctx.tg_chat_id)
         if expenses:
             message_lines = ["Recent expenses:"]
             for exp in expenses:
@@ -75,6 +76,13 @@ async def handleListExpenses(ctx: TgContext, messenger: Messenger, svc: Expenses
                         message.append(f"• {participant.username} owes {participant.amount_owed}")
                 
                 message_lines.append("\n".join(message))
+            
+            message_lines.append("Balances:")
+            message = []
+            for balance in balances:
+                message.append(f"• {balance.username} {'owes' if balance.balance < 0 else 'is owed'} {balance.balance} in total")
+            
+            message_lines.append("\n".join(message))
 
             await messenger.send_message(
                 chat_id=ctx.tg_chat_id,

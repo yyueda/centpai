@@ -170,8 +170,9 @@ class ExpensesRepository:
             )
             for member in members if member.user.id != user_id
         ]
+
+        await self.update_balances(chat_id, user_id, members, split_amount, amount, )
         
-        # call add_splits()
         await self.add_splits(splits)
 
         await self.db.flush()  # assigns expense.id
@@ -262,4 +263,16 @@ class ExpensesRepository:
         )
         res = (await self.db.scalars(stmt)).all()
         return list(res)
-    
+
+
+    async def update_balances(self, chat_id: int, paid_user_id: int, members: list[ChatMember], split_amount: Decimal, amount: Decimal):
+        
+        for member in members:
+            user_id = member.user_id
+            bal = await self.get_user_balance(chat_id, user_id)
+            if user_id != paid_user_id:
+                bal.balance -= split_amount
+            else:
+                bal.balance += amount
+        
+        await self.db.flush()
