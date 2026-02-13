@@ -120,7 +120,7 @@ async def handleRemoveExpense(ctx: TgContext, messenger: Messenger, svc: Expense
     except ValueError as e:
         await messenger.send_message(
             chat_id=ctx.tg_chat_id,
-            text=f"{e.message}",
+            text=f"{e}",
             reply_to_message_id=ctx.message_id
         )
     except DomainError as e:
