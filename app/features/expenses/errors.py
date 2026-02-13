@@ -1,4 +1,5 @@
 from app.core.errors import DomainError
+from decimal import Decimal
 
 class NotMember(DomainError):
     def __init__(self):
@@ -23,3 +24,11 @@ class ExpenseNotFoundError(DomainError):
 class ExpenseNotOwnedError(DomainError):
     def __init__(self, expense_id: int, username: str):
         super().__init__(message=f"Expense {expense_id} is not owned by {username}")
+
+class NoDebtOwedError(DomainError):
+    def __init__(self, to_username: str):
+        super().__init__(message=f"You don't owe anything to @{to_username}")
+
+class PaymentExceedsDebtError(DomainError):
+    def __init__(self, debt: Decimal, amount: Decimal, to_username: str):
+        super().__init__(message=f"You only owe {debt} to @{to_username} but tried to pay {amount}.")

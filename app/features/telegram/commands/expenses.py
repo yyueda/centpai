@@ -62,6 +62,13 @@ def parse_id(id: str) -> int:
         raise ValueError("Invalid id format")
 
 
+def parse_user(user: str) -> int:
+    user_split = user.split("@")
+    if len(user_split) != 2 or user_split[0] != '':
+        raise ValueError("Incorrect user format")
+
+    return user_split[1]
+
 async def handleListExpenses(ctx: TgContext, messenger: Messenger, svc: ExpensesService) -> None:
     try:
         expenses = await svc.get_expenses(ctx.tg_chat_id)
@@ -80,6 +87,8 @@ async def handleListExpenses(ctx: TgContext, messenger: Messenger, svc: Expenses
             message_lines.append("Balances:")
             message = []
             for balance in balances:
+                if balance.balance == 0:
+                    continue
                 message.append(f"• {balance.username} {'owes' if balance.balance < 0 else 'is owed'} {balance.balance} in total")
             
             message_lines.append("\n".join(message))
@@ -120,7 +129,30 @@ async def handleRemoveExpense(ctx: TgContext, messenger: Messenger, svc: Expense
     except ValueError as e:
         await messenger.send_message(
             chat_id=ctx.tg_chat_id,
+            text=str(e),
+            reply_to_message_id=ctx.message_id
+        )
+    except DomainError as e:
+        await messenger.send_message(
+            chat_id=ctx.tg_chat_id,
             text=f"{e.message}",
+            reply_to_message_id=ctx.message_id
+        )
+
+
+async def handlePay(ctx: TgContext, messenger: Messenger, svc: ExpensesService, args: list[str]) -> None:
+    if not args or len(args) != 2:
+        await messenger.send_message(ctx.tg_chat_id, "Usage: /pay @user <amount>", reply_to_message_id=ctx.message_id)
+        return
+    
+    try:
+        username = parse_user(args[0])
+        amount = parse_amount(args[1])
+        await svc.process_payment(ctx.tg_chat_id, ctx.tg_user_id, username, amount)
+    except ValueError as e:
+        await messenger.send_message(
+            chat_id=ctx.tg_chat_id,
+            text=str(e),
             reply_to_message_id=ctx.message_id
         )
     except DomainError as e:
