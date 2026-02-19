@@ -215,7 +215,7 @@ class ExpensesService:
             
             to_user = await self.repo.get_user_by_username(to_username)
             if not to_user:
-                raise UserNotRegistered() #TODO: improve user not registered error message
+                raise UserNotRegistered(message="User {to_username} is not registered yet.")
 
             chat = await self.repo.get_chat_by_tg_id(tg_chat_id)
             if not chat:
@@ -227,7 +227,7 @@ class ExpensesService:
             
             to_user_is_member = await self.repo.is_member(chat.id, to_user.id)
             if not to_user_is_member:
-                raise NotMember() #TODO: improve not member error message
+                raise NotMember(username=to_username)
             
             total_amount_still_owed = await self.repo.get_pairwise_debt(chat.id, user.id, to_user.id)
             if total_amount_still_owed == 0:
