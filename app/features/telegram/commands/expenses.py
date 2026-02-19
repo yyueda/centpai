@@ -89,7 +89,7 @@ async def handleListExpenses(ctx: TgContext, messenger: Messenger, svc: Expenses
             for balance in balances:
                 if balance.balance == 0:
                     continue
-                message.append(f"• {balance.username} {'owes' if balance.balance < 0 else 'is owed'} {balance.balance} in total")
+                message.append(f"• {balance.username} {'owes ' + -balance.balance if balance.balance < 0 else 'is owed ' + balance.balance} in total")
             
             message_lines.append("\n".join(message))
 
@@ -149,6 +149,12 @@ async def handlePay(ctx: TgContext, messenger: Messenger, svc: ExpensesService, 
         username = parse_user(args[0])
         amount = parse_amount(args[1])
         await svc.process_payment(ctx.tg_chat_id, ctx.tg_user_id, username, amount)
+
+        await messenger.send_message(
+            chat_id=ctx.tg_chat_id,
+            text=f"{amount} has been paid to {username}.",
+            reply_to_message_id=ctx.message_id
+        )
     except ValueError as e:
         await messenger.send_message(
             chat_id=ctx.tg_chat_id,

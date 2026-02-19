@@ -177,7 +177,7 @@ class ExpensesRepository:
             for member in members if member.user.id != user_id
         ]
 
-        await self.update_balances(chat_id, user_id, members, split_amount, amount, )
+        await self.update_balances(chat_id, user_id, members, split_amount, amount)
         
         await self.add_splits(splits)
 
@@ -285,7 +285,7 @@ class ExpensesRepository:
             if user_id != paid_user_id:
                 bal.balance -= split_amount
             else:
-                bal.balance += amount
+                bal.balance += amount- split_amount
         
         await self.db.flush()
     
@@ -306,7 +306,7 @@ class ExpensesRepository:
             .join(ExpenseSplit.expense)
             .where(
                 ExpenseSplit.user_id == from_user_id,
-                ExpenseSplit.expense.payer_id == to_user_id
+                ExpenseSplit.expense.has(Expense.payer_id == to_user_id)
             )
         )
         total_amount_owed = await self.db.scalar(stmt)
