@@ -143,6 +143,16 @@ class ExpensesRepository:
         )
         return (await self.db.scalar(stmt)) is not None
 
+
+    async def convert_users_to_chatmembers(self, chat_id: int, users: list[User]) -> list[ChatMember]:
+        user_ids = [u.id for u in users]
+        stmt = (
+            select(ChatMember)
+            .where(ChatMember.chat_id == chat_id, ChatMember.user_id.in_(user_ids))
+            .options(selectinload(ChatMember.user))
+        )
+        members = list((await self.db.scalars(stmt)).all())
+
     # ------------------------------------------------------------------
     # EXPENSES
     # ------------------------------------------------------------------
@@ -152,7 +162,8 @@ class ExpensesRepository:
         chat_id: int, 
         user_id: int, 
         amount: Decimal, 
-        description: str
+        description: str,
+        selected_users: list[User] = None
     ) -> None:
         
         expense = Expense(
@@ -164,7 +175,10 @@ class ExpensesRepository:
         self.db.add(expense)
 
         # get all members of chat group
-        members = await self.list_members(chat_id)
+        if not selected_users:
+            members = await self.list_members(chat_id)
+        else:
+            members = await self.convert_users_to_chatmembers(chat_id, selected_users)
         # split equally
         split_amount = Decimal(amount / len(members)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         # create splits

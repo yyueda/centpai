@@ -10,28 +10,43 @@ async def handleAddExpense(
     ctx: TgContext, 
     messenger: Messenger, 
     svc: ExpensesService,
-    args: list[str]
+    args: list[str],
+    mentioned_usernames: list[str]
 ) -> None:
     if not args:
         await messenger.send_message(ctx.tg_chat_id, "Usage: /expense_add <amount> <desc>", reply_to_message_id=ctx.message_id)
         return
     
     try:
+        len_mentioned_usernames = len(mentioned_usernames)
         amount = parse_amount(args[0])
-        desc = " ".join(args[1:])  # rest becomes description
+        desc = " ".join(args[1:len(args) - len_mentioned_usernames])  # rest becomes description
 
-        await svc.add_expense(
-            ctx.tg_chat_id,
-            ctx.tg_user_id,
-            amount,
-            desc
-        )
+        if len_mentioned_usernames > 0:
+            #check if there is = sign after username, if no then equal split
+            amount = parse_split_rule_amount(args[len(args) - len_mentioned_usernames:])
+            #equal split among selected users
+            await svc.add_expense_selected_users(
+                ctx.tg_chat_id,
+                ctx.tg_user_id,
+                amount,
+                desc,
+                mentioned_usernames
+            )
+            
+        else:
+            await svc.add_expense(
+                ctx.tg_chat_id,
+                ctx.tg_user_id,
+                amount,
+                desc
+            )
 
-        await messenger.send_message(
-            chat_id=ctx.tg_chat_id,
-            text="Expense added.",
-            reply_to_message_id=ctx.message_id
-        )
+            await messenger.send_message(
+                chat_id=ctx.tg_chat_id,
+                text="Expense added.",
+                reply_to_message_id=ctx.message_id
+            )
     except ValueError:
         await messenger.send_message(
             ctx.tg_chat_id,
@@ -68,6 +83,11 @@ def parse_user(user: str) -> int:
         raise ValueError("Incorrect user format")
 
     return user_split[1]
+
+
+def parse_split_rule_amount(username_amount: list[str]) -> dict[str: int]:
+    return {}
+
 
 async def handleListExpenses(ctx: TgContext, messenger: Messenger, svc: ExpensesService) -> None:
     try:

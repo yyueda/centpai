@@ -79,7 +79,7 @@ async def read_webhook(
                     case CommandName.JOIN:
                         await handleJoin(ctx, tg, svc)
                     case CommandName.EXPENSE_ADD:
-                        await handleAddExpense(ctx, tg, svc, command.args)
+                        await handleAddExpense(ctx, tg, svc, command.args, command.mentioned_usernames)
                     case CommandName.EXPENSE_VIEW:
                         await handleListExpenses(ctx, tg, svc)
                     case CommandName.EXPENSE_REMOVE:

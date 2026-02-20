@@ -127,6 +127,53 @@ class ExpensesService:
         else:
             await self.repo.db.commit()
     
+
+    async def add_expense_selected_users(
+        self,
+        tg_chat_id: int, 
+        tg_user_id: int,
+        amount: Decimal,
+        desc: str,
+        selected_users_username: list[str]
+    ) -> None:
+        await self.repo.db.begin()
+
+        try:
+            user = await self.repo.get_user_by_tg_id(tg_user_id)
+            if not user:
+                raise UserNotRegistered()
+            
+            chat = await self.repo.get_chat_by_tg_id(tg_chat_id)
+            if not chat:
+                raise ChatNotFound()
+            
+            is_member = await self.repo.is_member(chat.id, user.id)
+            if not is_member:
+                raise NotMember()
+            
+            selected_users = []
+            for username in selected_users_username:
+                user = await self.repo.get_user_by_username(username)
+                if not user:
+                    raise UserNotRegistered(message="User {username} is not registered yet.")
+                is_member = await self.repo.is_member(chat.id, user.id)
+                if not is_member:
+                    raise NotMember(username=username)
+                
+                selected_users.append(user)
+            
+            # TODO: add expense for selected users
+            await self.repo.create_expense(chat.id, user.id, amount, desc)
+        except IntegrityError as e:
+            await self.repo.db.rollback()
+            raise ServerError() from e  
+        except DomainError:
+            await self.repo.db.rollback()
+            raise
+        else:
+            await self.repo.db.commit()
+
+    
     async def get_expenses(self, tg_chat_id: int) -> list[ExpenseDTO]:
         chat = await self.repo.get_chat_by_tg_id(tg_chat_id)
         if not chat:
