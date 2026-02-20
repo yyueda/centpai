@@ -1,6 +1,6 @@
 <div align="center">
 
-[![Centpai](assets/centpai.svg)]
+![Centpai](assets/centpai.svg)
 
 # Centpai
 
