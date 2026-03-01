@@ -24,3 +24,10 @@ class ExpenseDTO:
 class BalanceDTO:
     username: str
     balance: Decimal
+
+
+@dataclass(frozen=True)
+class SimplifiedDebtDTO:
+    from_user: str
+    to_user: str
+    amount: Decimal

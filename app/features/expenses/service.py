@@ -2,7 +2,8 @@ from decimal import Decimal
 
 from fastapi import Depends
 from app.core.errors import DomainError
-from app.features.expenses.dto import ExpenseDTO, ExpenseParticipantDTO, BalanceDTO
+from app.features.expenses.dto import ExpenseDTO, ExpenseParticipantDTO, BalanceDTO, SimplifiedDebtDTO
+from app.features.expenses.algorithms.simplify_debts import simplify_debts
 from app.features.expenses.errors import ChatNotFound, NotMember, ServerError, UserNotRegistered, ExpenseNotFoundError, ExpenseNotOwnedError
 from app.features.expenses.repo import ExpensesRepository, get_repo
 from sqlalchemy.exc import IntegrityError
@@ -195,7 +196,7 @@ class ExpensesService:
         chat = await self.repo.get_chat_by_tg_id(tg_chat_id)
         if not chat:
             raise ChatNotFound()
-        
+
         balances = await self.repo.list_balances(chat.id)
 
         return [
@@ -203,3 +204,18 @@ class ExpensesService:
                 username=balance.user.username,
                 balance=balance.balance
             ) for balance in balances]
+
+    async def get_simplified_debts(self, tg_chat_id: int) -> list[SimplifiedDebtDTO]:
+        chat = await self.repo.get_chat_by_tg_id(tg_chat_id)
+        if not chat:
+            raise ChatNotFound()
+
+        balances = await self.repo.list_balances(chat.id)
+        balance_pairs = [(b.user.username, b.balance) for b in balances]
+
+        payments = simplify_debts(balance_pairs)
+
+        return [
+            SimplifiedDebtDTO(from_user=f, to_user=t, amount=a)
+            for f, t, a in payments
+        ]
