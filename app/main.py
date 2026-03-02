@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import Union
@@ -6,7 +7,7 @@ from app.features.expenses.repo import ExpensesRepository, get_repo
 from app.features.expenses.service import ExpensesService, get_service
 from app.features.telegram.commands.admin import handleHelp, handleInit
 from app.features.telegram.commands.command_parser import CommandName, parse_command
-from app.features.telegram.commands.expenses import handleAddExpense, handleListExpenses, handleRemoveExpense
+from app.features.telegram.commands.expenses import handleAddExpense, handleListExpenses, handleRemoveExpense, handlePay
 from app.features.telegram.commands.members import handleJoin, handleLeave, handleListMembers
 from app.features.telegram.context import build_context_from_update
 from app.features.telegram.schemas import Update
@@ -16,6 +17,7 @@ from app.core.config import settings
 from app.db.database import init_reset_db_dev
 
 setup_logging()
+logger = logging.getLogger("webhook")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -62,48 +64,53 @@ async def read_webhook(
             # bot just added to the group, send welcome message
             await handleInit(ctx, tg, svc)
     
-    if update.message:
-        command = parse_command(update.message)
+    try:
+        if update.message:
+            command = parse_command(update.message)
 
-        if command:
-            match command.name:
-                case CommandName.MEMBERS:
-                    await handleListMembers(ctx, tg, svc)
-                case CommandName.LEAVE:
-                    await handleLeave(ctx, tg, svc)
-                case CommandName.HELP:
-                    await handleHelp(ctx, tg)
-                case CommandName.JOIN:
+            if command:
+                match command.name:
+                    case CommandName.MEMBERS:
+                        await handleListMembers(ctx, tg, svc)
+                    case CommandName.LEAVE:
+                        await handleLeave(ctx, tg, svc)
+                    case CommandName.HELP:
+                        await handleHelp(ctx, tg)
+                    case CommandName.JOIN:
+                        await handleJoin(ctx, tg, svc)
+                    case CommandName.EXPENSE_ADD:
+                        await handleAddExpense(ctx, tg, svc, command.args, command.mentioned_usernames)
+                    case CommandName.EXPENSE_VIEW:
+                        await handleListExpenses(ctx, tg, svc)
+                    case CommandName.EXPENSE_REMOVE:
+                        await handleRemoveExpense(ctx, tg, svc, command.args)
+                    case CommandName.PAY:
+                        await handlePay(ctx, tg, svc, command.args)
+
+                return {"ok": True}
+
+        # For button clicks
+        if update.callback_query:
+            cq = update.callback_query
+            callback_id = cq.id
+            data = cq.data
+
+            # message can be None in some callback scenarios
+            if cq.message is None:
+                await tg.answer_callback_query(callback_query_id=callback_id, text="Unsupported action.")
+                return {"ok": True}
+
+            match data:
+                case "join_group":
                     await handleJoin(ctx, tg, svc)
-                case CommandName.EXPENSE_ADD:
-                    await handleAddExpense(ctx, tg, svc, command.args)
-                case CommandName.EXPENSE_VIEW:
+                case "leave_group":
+                    await handleLeave(ctx, tg, svc)
+                case "view_expenses_breakdown":
                     await handleListExpenses(ctx, tg, svc)
-                case CommandName.EXPENSE_REMOVE:
-                    await handleRemoveExpense(ctx, tg, svc, command.args)
-
-            return {"ok": True}
-
-    # For button clicks
-    if update.callback_query:
-        cq = update.callback_query
-        callback_id = cq.id
-        data = cq.data
-
-        # message can be None in some callback scenarios
-        if cq.message is None:
-            await tg.answer_callback_query(callback_query_id=callback_id, text="Unsupported action.")
-            return {"ok": True}
-
-        match data:
-            case "join_group":
-                await handleJoin(ctx, tg, svc)
-            case "leave_group":
-                await handleLeave(ctx, tg, svc)
-            case "view_expenses_breakdown":
-                await handleListExpenses(ctx, tg, svc)
-            case "help":
-                await handleHelp(ctx, tg)
+                case "help":
+                    await handleHelp(ctx, tg)
+    except Exception:
+        logger.exception("Failed to handle update")
             
     return {"ok": True}
 
