@@ -162,8 +162,7 @@ class ExpensesService:
                 
                 selected_users.append(user)
             
-            # TODO: add expense for selected users
-            await self.repo.create_expense(chat.id, user.id, amount, desc)
+            await self.repo.create_expense(chat.id, user.id, amount, desc, selected_users)
         except IntegrityError as e:
             await self.repo.db.rollback()
             raise ServerError() from e  
