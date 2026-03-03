@@ -251,6 +251,7 @@ class ExpensesService:
                 balance=balance.balance
             ) for balance in balances]
 
+
     async def get_simplified_debts(self, tg_chat_id: int) -> list[SimplifiedDebtDTO]:
         chat = await self.repo.get_chat_by_tg_id(tg_chat_id)
         if not chat:

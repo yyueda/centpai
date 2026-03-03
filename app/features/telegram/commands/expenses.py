@@ -77,7 +77,7 @@ def parse_id(id: str) -> int:
         raise ValueError("Invalid id format")
 
 
-def parse_user(user: str) -> int:
+def parse_user(user: str) -> str:
     user_split = user.split("@")
     if len(user_split) != 2 or user_split[0] != '':
         raise ValueError("Incorrect user format")
@@ -109,7 +109,10 @@ async def handleListExpenses(ctx: TgContext, messenger: Messenger, svc: Expenses
             for balance in balances:
                 if balance.balance == 0:
                     continue
-                message.append(f"• {balance.username} {'owes ' + -balance.balance if balance.balance < 0 else 'is owed ' + balance.balance} in total")
+                if balance.balance < 0:
+                    message.append(f"• {balance.username} owes {-balance.balance} in total")
+                else:
+                    message.append(f"• {balance.username} is owed {balance.balance} in total")
             
             message_lines.append("\n".join(message))
 

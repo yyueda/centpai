@@ -152,6 +152,8 @@ class ExpensesRepository:
             .options(selectinload(ChatMember.user))
         )
         members = list((await self.db.scalars(stmt)).all())
+        
+        return members
 
     # ------------------------------------------------------------------
     # EXPENSES
@@ -163,7 +165,7 @@ class ExpensesRepository:
         user_id: int, 
         amount: Decimal, 
         description: str,
-        selected_users: list[User] = None
+        selected_users: list[User] = []
     ) -> None:
         
         expense = Expense(
@@ -292,14 +294,19 @@ class ExpensesRepository:
 
 
     async def update_balances(self, chat_id: int, paid_user_id: int, members: list[ChatMember], split_amount: Decimal, amount: Decimal):
-        
         for member in members:
             user_id = member.user_id
             bal = await self.get_user_balance(chat_id, user_id)
+
+            if bal is None:
+                await self.create_balance(chat_id, user_id)
+                bal = await self.get_user_balance(chat_id, user_id)
+                assert bal is not None
+
             if user_id != paid_user_id:
                 bal.balance -= split_amount
             else:
-                bal.balance += amount- split_amount
+                bal.balance += amount - split_amount
         
         await self.db.flush()
     
@@ -307,6 +314,8 @@ class ExpensesRepository:
     async def update_balance(self, chat_id: int, from_user_id: int, to_user_id: int, amount: Decimal):
         from_user_balance = await self.get_user_balance(chat_id, from_user_id)
         to_user_balance = await self.get_user_balance(chat_id, to_user_id)
+        assert from_user_balance is not None
+        assert to_user_balance is not None
         from_user_balance.balance += amount
         to_user_balance.balance -= amount
 
@@ -325,7 +334,7 @@ class ExpensesRepository:
         )
         total_amount_owed = await self.db.scalar(stmt)
         if not total_amount_owed:
-            total_amount_owed = 0
+            total_amount_owed = Decimal("0")
 
         stmt = (
             select(func.sum(Payment.amount))
@@ -337,6 +346,6 @@ class ExpensesRepository:
 
         total_amount_paid = await self.db.scalar(stmt)
         if not total_amount_paid:
-            total_amount_paid = 0
+            total_amount_paid = Decimal("0")
 
         return total_amount_owed - total_amount_paid

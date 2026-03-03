@@ -10,9 +10,7 @@ class NotMember(DomainError):
         super().__init__(message=f"{username} {linking_verb} not a member of this chat. Use /join first.", code="not_member")
 
 class UserNotRegistered(DomainError):
-    def __init__(self, message: str = None):
-        if not message:
-            message = "User is not registered yet."
+    def __init__(self, message: str = "User is not registered yet."):
         super().__init__(message=f"{message}", code="user_not_registered")
 
 class ChatNotFound(DomainError):
