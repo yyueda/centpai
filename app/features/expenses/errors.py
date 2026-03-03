@@ -1,12 +1,19 @@
 from app.core.errors import DomainError
+from decimal import Decimal
 
 class NotMember(DomainError):
-    def __init__(self):
-        super().__init__(message="You are not a member of this chat. Use /join first.", code="not_member")
+    def __init__(self, username: str = "You"):
+        linking_verb = "are"
+        if username != "You":
+            linking_verb = "is"
+
+        super().__init__(message=f"{username} {linking_verb} not a member of this chat. Use /join first.", code="not_member")
 
 class UserNotRegistered(DomainError):
-    def __init__(self):
-        super().__init__(message="User not registered yet.", code="user_not_registered")
+    def __init__(self, message: str = None):
+        if not message:
+            message = "User is not registered yet."
+        super().__init__(message=f"{message}", code="user_not_registered")
 
 class ChatNotFound(DomainError):
     def __init__(self):
@@ -23,3 +30,11 @@ class ExpenseNotFoundError(DomainError):
 class ExpenseNotOwnedError(DomainError):
     def __init__(self, expense_id: int, username: str):
         super().__init__(message=f"Expense {expense_id} is not owned by {username}")
+
+class NoDebtOwedError(DomainError):
+    def __init__(self, to_username: str):
+        super().__init__(message=f"You don't owe anything to @{to_username}")
+
+class PaymentExceedsDebtError(DomainError):
+    def __init__(self, debt: Decimal, amount: Decimal, to_username: str):
+        super().__init__(message=f"You only owe {debt} to @{to_username} but tried to pay {amount}.")

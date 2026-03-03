@@ -1,6 +1,6 @@
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Iterable
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import IntegrityError
@@ -80,6 +80,12 @@ class ExpensesRepository:
                 raise
             return user
     
+
+    async def get_user_by_username(self, username: str) -> User | None:
+        stmt = select(User).where(User.username == username)
+        user = await self.db.scalar(stmt)
+        return user
+
     # ------------------------------------------------------------------
     # MEMBERS (ChatMember join table)
     # ------------------------------------------------------------------
@@ -137,6 +143,16 @@ class ExpensesRepository:
         )
         return (await self.db.scalar(stmt)) is not None
 
+
+    async def convert_users_to_chatmembers(self, chat_id: int, users: list[User]) -> list[ChatMember]:
+        user_ids = [u.id for u in users]
+        stmt = (
+            select(ChatMember)
+            .where(ChatMember.chat_id == chat_id, ChatMember.user_id.in_(user_ids))
+            .options(selectinload(ChatMember.user))
+        )
+        members = list((await self.db.scalars(stmt)).all())
+
     # ------------------------------------------------------------------
     # EXPENSES
     # ------------------------------------------------------------------
@@ -146,7 +162,8 @@ class ExpensesRepository:
         chat_id: int, 
         user_id: int, 
         amount: Decimal, 
-        description: str
+        description: str,
+        selected_users: list[User] = None
     ) -> None:
         
         expense = Expense(
@@ -158,7 +175,10 @@ class ExpensesRepository:
         self.db.add(expense)
 
         # get all members of chat group
-        members = await self.list_members(chat_id)
+        if not selected_users:
+            members = await self.list_members(chat_id)
+        else:
+            members = await self.convert_users_to_chatmembers(chat_id, selected_users)
         # split equally
         split_amount = Decimal(amount / len(members)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         # create splits
@@ -171,7 +191,7 @@ class ExpensesRepository:
             for member in members if member.user.id != user_id
         ]
 
-        await self.update_balances(chat_id, user_id, members, split_amount, amount, )
+        await self.update_balances(chat_id, user_id, members, split_amount, amount)
         
         await self.add_splits(splits)
 
@@ -213,7 +233,13 @@ class ExpensesRepository:
     # PAYMENTS
     # ------------------------------------------------------------------
 
-    async def create_payment(self, payment: Payment) -> None:
+    async def create_payment(self, chat_id: int, from_user_id: int, to_user_id: int, amount: Decimal) -> None:
+        payment = Payment(
+            chat_id=chat_id,
+            from_user_id=from_user_id,
+            to_user_id=to_user_id,
+            amount=amount
+        )
         self.db.add(payment)
         await self.db.flush()
 
@@ -273,6 +299,44 @@ class ExpensesRepository:
             if user_id != paid_user_id:
                 bal.balance -= split_amount
             else:
-                bal.balance += amount
+                bal.balance += amount- split_amount
         
         await self.db.flush()
+    
+
+    async def update_balance(self, chat_id: int, from_user_id: int, to_user_id: int, amount: Decimal):
+        from_user_balance = await self.get_user_balance(chat_id, from_user_id)
+        to_user_balance = await self.get_user_balance(chat_id, to_user_id)
+        from_user_balance.balance += amount
+        to_user_balance.balance -= amount
+
+        await self.db.flush()
+
+
+    async def get_pairwise_debt(self, chat_id: int, from_user_id: int, to_user_id: int) -> Decimal:
+
+        stmt = (
+            select(func.sum(ExpenseSplit.amount))
+            .join(ExpenseSplit.expense)
+            .where(
+                ExpenseSplit.user_id == from_user_id,
+                ExpenseSplit.expense.has(Expense.payer_id == to_user_id)
+            )
+        )
+        total_amount_owed = await self.db.scalar(stmt)
+        if not total_amount_owed:
+            total_amount_owed = 0
+
+        stmt = (
+            select(func.sum(Payment.amount))
+            .where(
+                Payment.from_user_id == from_user_id,
+                Payment.to_user_id == to_user_id
+            )
+        )
+
+        total_amount_paid = await self.db.scalar(stmt)
+        if not total_amount_paid:
+            total_amount_paid = 0
+
+        return total_amount_owed - total_amount_paid

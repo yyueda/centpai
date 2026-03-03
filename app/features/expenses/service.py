@@ -4,7 +4,7 @@ from fastapi import Depends
 from app.core.errors import DomainError
 from app.features.expenses.dto import ExpenseDTO, ExpenseParticipantDTO, BalanceDTO, SimplifiedDebtDTO
 from app.features.expenses.algorithms.simplify_debts import simplify_debts
-from app.features.expenses.errors import ChatNotFound, NotMember, ServerError, UserNotRegistered, ExpenseNotFoundError, ExpenseNotOwnedError
+from app.features.expenses.errors import ChatNotFound, NotMember, ServerError, UserNotRegistered, ExpenseNotFoundError, ExpenseNotOwnedError, NoDebtOwedError, PaymentExceedsDebtError
 from app.features.expenses.repo import ExpensesRepository, get_repo
 from sqlalchemy.exc import IntegrityError
 
@@ -128,6 +128,52 @@ class ExpensesService:
         else:
             await self.repo.db.commit()
     
+
+    async def add_expense_selected_users(
+        self,
+        tg_chat_id: int, 
+        tg_user_id: int,
+        amount: Decimal,
+        desc: str,
+        selected_users_username: list[str]
+    ) -> None:
+        await self.repo.db.begin()
+
+        try:
+            user = await self.repo.get_user_by_tg_id(tg_user_id)
+            if not user:
+                raise UserNotRegistered()
+            
+            chat = await self.repo.get_chat_by_tg_id(tg_chat_id)
+            if not chat:
+                raise ChatNotFound()
+            
+            is_member = await self.repo.is_member(chat.id, user.id)
+            if not is_member:
+                raise NotMember()
+            
+            selected_users = []
+            for username in selected_users_username:
+                user = await self.repo.get_user_by_username(username)
+                if not user:
+                    raise UserNotRegistered(message="User {username} is not registered yet.")
+                is_member = await self.repo.is_member(chat.id, user.id)
+                if not is_member:
+                    raise NotMember(username=username)
+                
+                selected_users.append(user)
+            
+            await self.repo.create_expense(chat.id, user.id, amount, desc, selected_users)
+        except IntegrityError as e:
+            await self.repo.db.rollback()
+            raise ServerError() from e  
+        except DomainError:
+            await self.repo.db.rollback()
+            raise
+        else:
+            await self.repo.db.commit()
+
+    
     async def get_expenses(self, tg_chat_id: int) -> list[ExpenseDTO]:
         chat = await self.repo.get_chat_by_tg_id(tg_chat_id)
         if not chat:
@@ -219,3 +265,48 @@ class ExpensesService:
             SimplifiedDebtDTO(from_user=f, to_user=t, amount=a)
             for f, t, a in payments
         ]
+    
+
+    async def process_payment(self, tg_chat_id: int, tg_user_id: int, to_username: str, amount: Decimal) -> None:
+        await self.repo.db.begin()
+
+        try:
+            user = await self.repo.get_user_by_tg_id(tg_user_id)
+            if not user:
+                raise UserNotRegistered()
+            
+            to_user = await self.repo.get_user_by_username(to_username)
+            if not to_user:
+                raise UserNotRegistered(message="User {to_username} is not registered yet.")
+
+            chat = await self.repo.get_chat_by_tg_id(tg_chat_id)
+            if not chat:
+                raise ChatNotFound()
+            
+            is_member = await self.repo.is_member(chat.id, user.id)
+            if not is_member:
+                raise NotMember()
+            
+            to_user_is_member = await self.repo.is_member(chat.id, to_user.id)
+            if not to_user_is_member:
+                raise NotMember(username=to_username)
+            
+            total_amount_still_owed = await self.repo.get_pairwise_debt(chat.id, user.id, to_user.id)
+            if total_amount_still_owed == 0:
+                raise NoDebtOwedError(to_username)
+            elif amount > total_amount_still_owed:
+                raise PaymentExceedsDebtError(total_amount_still_owed, amount, to_username)
+            
+            #create payment
+            await self.repo.create_payment(chat.id, user.id, to_user.id, amount)
+            #update balance
+            await self.repo.update_balance(chat.id, user.id, to_user.id, amount)
+
+        except IntegrityError as e:
+            await self.repo.db.rollback()
+            raise ServerError() from e  
+        except DomainError:
+            await self.repo.db.rollback()
+            raise
+        else:
+            await self.repo.db.commit()

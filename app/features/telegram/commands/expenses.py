@@ -10,28 +10,43 @@ async def handleAddExpense(
     ctx: TgContext, 
     messenger: Messenger, 
     svc: ExpensesService,
-    args: list[str]
+    args: list[str],
+    mentioned_usernames: list[str]
 ) -> None:
     if not args:
         await messenger.send_message(ctx.tg_chat_id, "Usage: /expense_add <amount> <desc>", reply_to_message_id=ctx.message_id)
         return
     
     try:
+        len_mentioned_usernames = len(mentioned_usernames)
         amount = parse_amount(args[0])
-        desc = " ".join(args[1:])  # rest becomes description
+        desc = " ".join(args[1:len(args) - len_mentioned_usernames])  # rest becomes description
 
-        await svc.add_expense(
-            ctx.tg_chat_id,
-            ctx.tg_user_id,
-            amount,
-            desc
-        )
+        if len_mentioned_usernames > 0:
+            #check if there is = sign after username, if no then equal split
+            amount = parse_split_rule_amount(args[len(args) - len_mentioned_usernames:])
+            #equal split among selected users
+            await svc.add_expense_selected_users(
+                ctx.tg_chat_id,
+                ctx.tg_user_id,
+                amount,
+                desc,
+                mentioned_usernames
+            )
+            
+        else:
+            await svc.add_expense(
+                ctx.tg_chat_id,
+                ctx.tg_user_id,
+                amount,
+                desc
+            )
 
-        await messenger.send_message(
-            chat_id=ctx.tg_chat_id,
-            text="Expense added.",
-            reply_to_message_id=ctx.message_id
-        )
+            await messenger.send_message(
+                chat_id=ctx.tg_chat_id,
+                text="Expense added.",
+                reply_to_message_id=ctx.message_id
+            )
     except ValueError:
         await messenger.send_message(
             ctx.tg_chat_id,
@@ -62,6 +77,18 @@ def parse_id(id: str) -> int:
         raise ValueError("Invalid id format")
 
 
+def parse_user(user: str) -> int:
+    user_split = user.split("@")
+    if len(user_split) != 2 or user_split[0] != '':
+        raise ValueError("Incorrect user format")
+
+    return user_split[1]
+
+
+def parse_split_rule_amount(username_amount: list[str]) -> dict[str: int]:
+    return {}
+
+
 async def handleListExpenses(ctx: TgContext, messenger: Messenger, svc: ExpensesService) -> None:
     try:
         expenses = await svc.get_expenses(ctx.tg_chat_id)
@@ -80,7 +107,9 @@ async def handleListExpenses(ctx: TgContext, messenger: Messenger, svc: Expenses
             message_lines.append("Balances:")
             message = []
             for balance in balances:
-                message.append(f"• {balance.username} {'owes' if balance.balance < 0 else 'is owed'} {balance.balance} in total")
+                if balance.balance == 0:
+                    continue
+                message.append(f"• {balance.username} {'owes ' + -balance.balance if balance.balance < 0 else 'is owed ' + balance.balance} in total")
             
             message_lines.append("\n".join(message))
 
@@ -120,7 +149,36 @@ async def handleRemoveExpense(ctx: TgContext, messenger: Messenger, svc: Expense
     except ValueError as e:
         await messenger.send_message(
             chat_id=ctx.tg_chat_id,
-            text=f"{e}",
+            text=str(e),
+            reply_to_message_id=ctx.message_id
+        )
+    except DomainError as e:
+        await messenger.send_message(
+            chat_id=ctx.tg_chat_id,
+            text=f"{e.message}",
+            reply_to_message_id=ctx.message_id
+        )
+
+
+async def handlePay(ctx: TgContext, messenger: Messenger, svc: ExpensesService, args: list[str]) -> None:
+    if not args or len(args) != 2:
+        await messenger.send_message(ctx.tg_chat_id, "Usage: /pay @user <amount>", reply_to_message_id=ctx.message_id)
+        return
+    
+    try:
+        username = parse_user(args[0])
+        amount = parse_amount(args[1])
+        await svc.process_payment(ctx.tg_chat_id, ctx.tg_user_id, username, amount)
+
+        await messenger.send_message(
+            chat_id=ctx.tg_chat_id,
+            text=f"{amount} has been paid to {username}.",
+            reply_to_message_id=ctx.message_id
+        )
+    except ValueError as e:
+        await messenger.send_message(
+            chat_id=ctx.tg_chat_id,
+            text=str(e),
             reply_to_message_id=ctx.message_id
         )
     except DomainError as e:
