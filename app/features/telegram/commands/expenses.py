@@ -35,16 +35,25 @@ async def handleAddExpense(
             )
             
         else:
-            await svc.add_expense(
+            updated_balances = await svc.add_expense(
                 ctx.tg_chat_id,
                 ctx.tg_user_id,
                 amount,
                 desc
             )
 
+            lines = [f"Expense added. Updated balances:"]
+            for b in updated_balances:
+                if b.balance == 0:
+                    continue
+                if b.balance < 0:
+                    lines.append(f"• {b.username} owes {-b.balance} in total")
+                else:
+                    lines.append(f"• {b.username} is owed {b.balance} in total")
+
             await messenger.send_message(
                 chat_id=ctx.tg_chat_id,
-                text="Expense added.",
+                text="\n".join(lines),
                 reply_to_message_id=ctx.message_id
             )
     except ValueError:
