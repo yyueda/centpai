@@ -199,3 +199,23 @@ async def handlePay(ctx: TgContext, messenger: Messenger, svc: ExpensesService, 
             text=f"{e.message}",
             reply_to_message_id=ctx.message_id
         )
+
+async def handleDebts(ctx: TgContext, messenger: Messenger, svc: ExpensesService, args: list[str]) -> None:
+    try:
+        simplified_debts = await svc.get_simplified_debts(ctx.tg_chat_id)
+
+        lines = [f"Simplified Debts:"]
+        for d in simplified_debts:
+            lines.append(f"• {d.from_user} -> {d.to_user} ${d.amount}")
+
+        await messenger.send_message(
+            chat_id=ctx.tg_chat_id,
+            text="\n".join(lines),
+            reply_to_message_id=ctx.message_id
+        )
+    except DomainError as e:
+        await messenger.send_message(
+            chat_id=ctx.tg_chat_id,
+            text=f"{e.message}",
+            reply_to_message_id=ctx.message_id
+        )
