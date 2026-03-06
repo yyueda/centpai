@@ -97,7 +97,7 @@ def parse_user(user: str) -> str:
 def check_split_rule(username_amounts: list[str], amount: Decimal, request_username: str) -> dict[str, Decimal]:
     username_amount_split = username_amounts[0].split('=')
     if len(username_amount_split) == 1:
-        #equal split
+        #equal split among selected users
         equal_amount = Decimal(amount / (len(username_amounts) + 1)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         return equal_split_selected_users(username_amounts, equal_amount, request_username)
     elif len(username_amount_split) == 2 and ('%' in username_amount_split[1]):

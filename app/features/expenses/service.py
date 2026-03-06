@@ -174,6 +174,9 @@ class ExpensesService:
                 userid_to_amount[user.id] = amt
             
             await self.repo.create_expense(chat.id, user.id, amount, desc, userid_to_amount)
+            await self.repo.update_balances_split_rule(chat.id, user.id, amount, userid_to_amount)
+            #TODO: call update balances here
+
         except IntegrityError as e:
             await self.repo.db.rollback()
             raise ServerError() from e  
