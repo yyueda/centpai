@@ -79,7 +79,6 @@ class ExpensesRepository:
             if not user:
                 raise
             return user
-    
 
     async def get_user_by_username(self, username: str) -> User | None:
         stmt = select(User).where(User.username == username)
@@ -143,7 +142,6 @@ class ExpensesRepository:
         )
         return (await self.db.scalar(stmt)) is not None
 
-
     async def convert_users_to_chatmembers(self, chat_id: int, users: list[User]) -> list[ChatMember]:
         user_ids = [u.id for u in users]
         stmt = (
@@ -152,6 +150,8 @@ class ExpensesRepository:
             .options(selectinload(ChatMember.user))
         )
         members = list((await self.db.scalars(stmt)).all())
+        
+        return members
 
     # ------------------------------------------------------------------
     # EXPENSES
@@ -163,7 +163,6 @@ class ExpensesRepository:
         user_id: int, 
         amount: Decimal, 
         description: str,
-        selected_users: list[User] = None
     ) -> None:
         
         expense = Expense(
@@ -172,29 +171,8 @@ class ExpensesRepository:
             amount=amount,
             description=description
         )
+
         self.db.add(expense)
-
-        # get all members of chat group
-        if not selected_users:
-            members = await self.list_members(chat_id)
-        else:
-            members = await self.convert_users_to_chatmembers(chat_id, selected_users)
-        # split equally
-        split_amount = Decimal(amount / len(members)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        # create splits
-        splits = [
-            ExpenseSplit(
-                user_id=member.user.id,
-                amount=split_amount,
-                expense=expense
-            )
-            for member in members if member.user.id != user_id
-        ]
-
-        await self.update_balances(chat_id, user_id, members, split_amount, amount)
-        
-        await self.add_splits(splits)
-
         await self.db.flush()  # assigns expense.id
 
     async def add_splits(self, splits: Iterable[ExpenseSplit]) -> None:
@@ -214,7 +192,6 @@ class ExpensesRepository:
         )
         res = (await self.db.scalars(stmt)).all()
         return list(res)
-    
 
     async def get_expense(self, chat_id: int, expense_id: int) -> Expense | None:
         stmt = select(Expense).where(
@@ -223,7 +200,6 @@ class ExpensesRepository:
         )
 
         return await self.db.scalar(stmt)
-
 
     async def remove_expense(self, expense: Expense) -> None:
         await self.db.delete(expense)
@@ -242,7 +218,6 @@ class ExpensesRepository:
         )
         self.db.add(payment)
         await self.db.flush()
-
 
     async def list_payments(self, chat_id: int, limit: int = 100) -> list[Payment]:
         stmt = (
@@ -290,31 +265,29 @@ class ExpensesRepository:
         res = (await self.db.scalars(stmt)).all()
         return list(res)
 
+    async def update_balances(self, chat_id: int, deltas: dict[int, Decimal]) -> list[Balance]:
+        balances = await self.list_balances(chat_id)
+        bal_by_user = {b.user_id: b for b in balances}
 
-    async def update_balances(self, chat_id: int, paid_user_id: int, members: list[ChatMember], split_amount: Decimal, amount: Decimal):
-        
-        for member in members:
-            user_id = member.user_id
-            bal = await self.get_user_balance(chat_id, user_id)
-            if user_id != paid_user_id:
-                bal.balance -= split_amount
-            else:
-                bal.balance += amount- split_amount
+        for user_id, delta in deltas.items():
+            bal = bal_by_user[user_id]
+            bal.balance += delta
         
         await self.db.flush()
-    
+        return list(bal_by_user.values())
 
+    # TODO
     async def update_balance(self, chat_id: int, from_user_id: int, to_user_id: int, amount: Decimal):
         from_user_balance = await self.get_user_balance(chat_id, from_user_id)
         to_user_balance = await self.get_user_balance(chat_id, to_user_id)
+        assert from_user_balance is not None
+        assert to_user_balance is not None
         from_user_balance.balance += amount
         to_user_balance.balance -= amount
 
         await self.db.flush()
 
-
     async def get_pairwise_debt(self, chat_id: int, from_user_id: int, to_user_id: int) -> Decimal:
-
         stmt = (
             select(func.sum(ExpenseSplit.amount))
             .join(ExpenseSplit.expense)
@@ -325,7 +298,7 @@ class ExpensesRepository:
         )
         total_amount_owed = await self.db.scalar(stmt)
         if not total_amount_owed:
-            total_amount_owed = 0
+            total_amount_owed = Decimal("0")
 
         stmt = (
             select(func.sum(Payment.amount))
@@ -337,6 +310,6 @@ class ExpensesRepository:
 
         total_amount_paid = await self.db.scalar(stmt)
         if not total_amount_paid:
-            total_amount_paid = 0
+            total_amount_paid = Decimal("0")
 
         return total_amount_owed - total_amount_paid

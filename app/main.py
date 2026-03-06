@@ -7,7 +7,7 @@ from app.features.expenses.repo import ExpensesRepository, get_repo
 from app.features.expenses.service import ExpensesService, get_service
 from app.features.telegram.commands.admin import handleHelp, handleInit
 from app.features.telegram.commands.command_parser import CommandName, parse_command
-from app.features.telegram.commands.expenses import handleAddExpense, handleListExpenses, handleRemoveExpense, handlePay
+from app.features.telegram.commands.expenses import handleAddExpense, handleDebts, handleListExpenses, handleRemoveExpense, handlePay
 from app.features.telegram.commands.members import handleJoin, handleLeave, handleListMembers
 from app.features.telegram.context import build_context_from_update
 from app.features.telegram.schemas import Update
@@ -86,6 +86,8 @@ async def read_webhook(
                         await handleRemoveExpense(ctx, tg, svc, command.args)
                     case CommandName.PAY:
                         await handlePay(ctx, tg, svc, command.args)
+                    case CommandName.DEBTS:
+                        await handleDebts(ctx, tg, svc, command.args)
 
                 return {"ok": True}
 

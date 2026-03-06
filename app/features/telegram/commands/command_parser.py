@@ -13,6 +13,7 @@ class CommandName(StrEnum):
     EXPENSE_VIEW = "/expense_view"
     EXPENSE_REMOVE = "/expense_remove"
     PAY = "/pay"
+    DEBTS = "/debts"
 
 @dataclass(frozen=True) # Immutable
 class Command:

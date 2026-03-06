@@ -208,3 +208,5 @@ __marimo__/
 
 # SQlite
 *.db
+
+.vscode

@@ -1,8 +1,9 @@
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
 from fastapi import Depends
 from app.core.errors import DomainError
-from app.features.expenses.dto import ExpenseDTO, ExpenseParticipantDTO, BalanceDTO
+from app.features.expenses.dto import ExpenseDTO, ExpenseParticipantDTO, BalanceDTO, SimplifiedDebtDTO
+from app.features.expenses.algorithms.simplify_debts import simplify_debts
 from app.features.expenses.errors import ChatNotFound, NotMember, ServerError, UserNotRegistered, ExpenseNotFoundError, ExpenseNotOwnedError, NoDebtOwedError, PaymentExceedsDebtError
 from app.features.expenses.repo import ExpensesRepository, get_repo
 from sqlalchemy.exc import IntegrityError
@@ -34,7 +35,6 @@ class ExpensesService:
             raise ServerError() from e
         else:
             await self.repo.db.commit()
-    
 
     async def remove_member(
             self,
@@ -66,7 +66,6 @@ class ExpensesService:
         else:
             await self.repo.db.commit()
 
-
     async def _ensure_member_and_balance(
         self, 
         tg_chat_id: int, 
@@ -75,9 +74,9 @@ class ExpensesService:
     ) -> None:
         chat = await self.repo.get_or_create_chat(tg_chat_id)
         user = await self.repo.get_or_create_user(tg_user_id, **user_fields)
+        
         await self.repo.add_member(chat.id, user.id)
         await self.repo.create_balance(chat.id, user.id)
-
 
     async def get_members(self, tg_chat_id: int) -> list[str]:
         chat = await self.repo.get_chat_by_tg_id(tg_chat_id)
@@ -100,7 +99,7 @@ class ExpensesService:
         tg_user_id: int,
         amount: Decimal,
         desc: str
-    ) -> None:
+    ) -> list[BalanceDTO]:
         await self.repo.db.begin()
 
         try:
@@ -116,8 +115,13 @@ class ExpensesService:
             if not is_member:
                 raise NotMember()
             
-            # TODO: Create splits + update balance in repo
+            members = await self.repo.list_members(chat.id)
+            member_ids = [m.user_id for m in members]
+
+            deltas = self._calc_equal_split_deltas(amount, user.id, member_ids)
+            
             await self.repo.create_expense(chat.id, user.id, amount, desc)
+            updated_balances = await self.repo.update_balances(chat.id, deltas)
         except IntegrityError as e:
             await self.repo.db.rollback()
             raise ServerError() from e  
@@ -126,52 +130,55 @@ class ExpensesService:
             raise
         else:
             await self.repo.db.commit()
-    
+        
+        return [
+            BalanceDTO(username=b.user.username, balance=b.balance)
+            for b in updated_balances
+        ]
 
-    async def add_expense_selected_users(
-        self,
-        tg_chat_id: int, 
-        tg_user_id: int,
-        amount: Decimal,
-        desc: str,
-        selected_users_username: list[str]
-    ) -> None:
-        await self.repo.db.begin()
+    # async def add_expense_selected_users(
+    #     self,
+    #     tg_chat_id: int, 
+    #     tg_user_id: int,
+    #     amount: Decimal,
+    #     desc: str,
+    #     selected_users_username: list[str]
+    # ) -> None:
+    #     await self.repo.db.begin()
 
-        try:
-            user = await self.repo.get_user_by_tg_id(tg_user_id)
-            if not user:
-                raise UserNotRegistered()
+    #     try:
+    #         user = await self.repo.get_user_by_tg_id(tg_user_id)
+    #         if not user:
+    #             raise UserNotRegistered()
             
-            chat = await self.repo.get_chat_by_tg_id(tg_chat_id)
-            if not chat:
-                raise ChatNotFound()
+    #         chat = await self.repo.get_chat_by_tg_id(tg_chat_id)
+    #         if not chat:
+    #             raise ChatNotFound()
             
-            is_member = await self.repo.is_member(chat.id, user.id)
-            if not is_member:
-                raise NotMember()
+    #         is_member = await self.repo.is_member(chat.id, user.id)
+    #         if not is_member:
+    #             raise NotMember()
             
-            selected_users = []
-            for username in selected_users_username:
-                user = await self.repo.get_user_by_username(username)
-                if not user:
-                    raise UserNotRegistered(message="User {username} is not registered yet.")
-                is_member = await self.repo.is_member(chat.id, user.id)
-                if not is_member:
-                    raise NotMember(username=username)
+    #         selected_users = []
+    #         for username in selected_users_username:
+    #             user = await self.repo.get_user_by_username(username)
+    #             if not user:
+    #                 raise UserNotRegistered(message="User {username} is not registered yet.")
+    #             is_member = await self.repo.is_member(chat.id, user.id)
+    #             if not is_member:
+    #                 raise NotMember(username=username)
                 
-                selected_users.append(user)
+    #             selected_users.append(user)
             
-            await self.repo.create_expense(chat.id, user.id, amount, desc, selected_users)
-        except IntegrityError as e:
-            await self.repo.db.rollback()
-            raise ServerError() from e  
-        except DomainError:
-            await self.repo.db.rollback()
-            raise
-        else:
-            await self.repo.db.commit()
-
+    #         await self.repo.create_expense(chat.id, user.id, amount, desc, selected_users)
+    #     except IntegrityError as e:
+    #         await self.repo.db.rollback()
+    #         raise ServerError() from e  
+    #     except DomainError:
+    #         await self.repo.db.rollback()
+    #         raise
+    #     else:
+    #         await self.repo.db.commit()
     
     async def get_expenses(self, tg_chat_id: int) -> list[ExpenseDTO]:
         chat = await self.repo.get_chat_by_tg_id(tg_chat_id)
@@ -197,7 +204,6 @@ class ExpensesService:
                 ]
 
         ) for expense in expenses_list]
-
 
     async def remove_expense(self, tg_chat_id: int, tg_user_id: int, expense_id: int) -> None:
         await self.repo.db.begin()
@@ -232,7 +238,6 @@ class ExpensesService:
         else:
             await self.repo.db.commit()
 
-
     # ------------------------------------------------------------------
     # BALANCES
     # --------------------------------------------------------------------
@@ -241,7 +246,7 @@ class ExpensesService:
         chat = await self.repo.get_chat_by_tg_id(tg_chat_id)
         if not chat:
             raise ChatNotFound()
-        
+
         balances = await self.repo.list_balances(chat.id)
 
         return [
@@ -249,7 +254,21 @@ class ExpensesService:
                 username=balance.user.username,
                 balance=balance.balance
             ) for balance in balances]
-    
+
+    async def get_simplified_debts(self, tg_chat_id: int) -> list[SimplifiedDebtDTO]:
+        chat = await self.repo.get_chat_by_tg_id(tg_chat_id)
+        if not chat:
+            raise ChatNotFound()
+
+        balances = await self.repo.list_balances(chat.id)
+        balance_pairs = [(b.user.username, b.balance) for b in balances]
+
+        payments = simplify_debts(balance_pairs)
+
+        return [
+            SimplifiedDebtDTO(from_user=f, to_user=t, amount=a)
+            for f, t, a in payments
+        ]
 
     async def process_payment(self, tg_chat_id: int, tg_user_id: int, to_username: str, amount: Decimal) -> None:
         await self.repo.db.begin()
@@ -294,3 +313,24 @@ class ExpensesService:
             raise
         else:
             await self.repo.db.commit()
+    
+    # ------------------------------------------------------------------
+    # HELPERS
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _calc_equal_split_deltas(
+        amount: Decimal,
+        payer_id: int,
+        member_ids: list[int],
+    ) -> dict[int, Decimal]:
+        """
+        Returns {user_id: balance_delta} for an equal split.
+        Positive = gains (payer), negative = owes (non-payer).
+        """
+        n = len(member_ids)
+        split_amount = Decimal(amount / n).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        return {
+            uid: (amount - split_amount if uid == payer_id else -split_amount)
+            for uid in member_ids
+        }

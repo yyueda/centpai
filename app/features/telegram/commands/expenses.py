@@ -35,16 +35,25 @@ async def handleAddExpense(
             )
             
         else:
-            await svc.add_expense(
+            updated_balances = await svc.add_expense(
                 ctx.tg_chat_id,
                 ctx.tg_user_id,
                 amount,
                 desc
             )
 
+            lines = [f"Expense added. Updated balances:"]
+            for b in updated_balances:
+                if b.balance == 0:
+                    continue
+                if b.balance < 0:
+                    lines.append(f"• {b.username} owes {-b.balance} in total")
+                else:
+                    lines.append(f"• {b.username} is owed {b.balance} in total")
+
             await messenger.send_message(
                 chat_id=ctx.tg_chat_id,
-                text="Expense added.",
+                text="\n".join(lines),
                 reply_to_message_id=ctx.message_id
             )
     except ValueError:
@@ -77,7 +86,7 @@ def parse_id(id: str) -> int:
         raise ValueError("Invalid id format")
 
 
-def parse_user(user: str) -> int:
+def parse_user(user: str) -> str:
     user_split = user.split("@")
     if len(user_split) != 2 or user_split[0] != '':
         raise ValueError("Incorrect user format")
@@ -109,7 +118,10 @@ async def handleListExpenses(ctx: TgContext, messenger: Messenger, svc: Expenses
             for balance in balances:
                 if balance.balance == 0:
                     continue
-                message.append(f"• {balance.username} {'owes ' + -balance.balance if balance.balance < 0 else 'is owed ' + balance.balance} in total")
+                if balance.balance < 0:
+                    message.append(f"• {balance.username} owes {-balance.balance} in total")
+                else:
+                    message.append(f"• {balance.username} is owed {balance.balance} in total")
             
             message_lines.append("\n".join(message))
 
@@ -179,6 +191,26 @@ async def handlePay(ctx: TgContext, messenger: Messenger, svc: ExpensesService, 
         await messenger.send_message(
             chat_id=ctx.tg_chat_id,
             text=str(e),
+            reply_to_message_id=ctx.message_id
+        )
+    except DomainError as e:
+        await messenger.send_message(
+            chat_id=ctx.tg_chat_id,
+            text=f"{e.message}",
+            reply_to_message_id=ctx.message_id
+        )
+
+async def handleDebts(ctx: TgContext, messenger: Messenger, svc: ExpensesService, args: list[str]) -> None:
+    try:
+        simplified_debts = await svc.get_simplified_debts(ctx.tg_chat_id)
+
+        lines = [f"Simplified Debts:"]
+        for d in simplified_debts:
+            lines.append(f"• {d.from_user} -> {d.to_user} ${d.amount}")
+
+        await messenger.send_message(
+            chat_id=ctx.tg_chat_id,
+            text="\n".join(lines),
             reply_to_message_id=ctx.message_id
         )
     except DomainError as e:

@@ -9,7 +9,6 @@ class ExpenseParticipantDTO:
     username: str
     amount_owed: Decimal
 
-
 @dataclass(frozen=True)
 class ExpenseDTO:
     id: int
@@ -19,8 +18,13 @@ class ExpenseDTO:
     created_at: datetime
     participants: List[ExpenseParticipantDTO] | None = None
 
-
 @dataclass(frozen=True)
 class BalanceDTO:
     username: str
     balance: Decimal
+
+@dataclass(frozen=True)
+class SimplifiedDebtDTO:
+    from_user: str
+    to_user: str
+    amount: Decimal
