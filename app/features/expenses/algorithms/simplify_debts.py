@@ -58,7 +58,9 @@ def simplify_debts(
     debtor_creditor_edges: list[tuple[int, int, Edge]] = []
     for i in range(nd):
         for j in range(nc):
-            edge = dinic.add_edge(1 + i, nd + 1 + j, min(debtors[i][1], creditors[j][1]))
+            edge = dinic.add_edge(
+                1 + i, nd + 1 + j, min(debtors[i][1], creditors[j][1])
+            )
             debtor_creditor_edges.append((i, j, edge))
 
     dinic.max_flow(source, sink)
@@ -67,10 +69,12 @@ def simplify_debts(
     payments: list[tuple[str, str, Decimal]] = []
     for i, j, edge in debtor_creditor_edges:
         if edge.flow > 0:
-            payments.append((
-                debtors[i][0],
-                creditors[j][0],
-                Decimal(edge.flow) * _CENT,
-            ))
+            payments.append(
+                (
+                    debtors[i][0],
+                    creditors[j][0],
+                    Decimal(edge.flow) * _CENT,
+                )
+            )
 
     return payments
