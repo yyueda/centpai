@@ -1,13 +1,25 @@
 from datetime import datetime, timezone
 from decimal import Decimal
-from sqlalchemy import BigInteger, CheckConstraint, DateTime, ForeignKey, Integer, Numeric, String, UniqueConstraint
+from sqlalchemy import (
+    BigInteger,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
 
 def utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
+
 class Base(DeclarativeBase):
     pass
+
 
 class Chat(Base):
     __tablename__ = "chats"
@@ -28,13 +40,14 @@ class Chat(Base):
         back_populates="chat", cascade="all, delete-orphan"
     )
 
+
 class User(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     telegram_user_id: Mapped[int] = mapped_column(BigInteger, unique=True, index=True)
 
-    username: Mapped[str] = mapped_column(String(255), nullable=False) 
+    username: Mapped[str] = mapped_column(String(255), nullable=False)
     first_name: Mapped[str] = mapped_column(String(255))
     last_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
@@ -51,18 +64,22 @@ class User(Base):
         back_populates="user", cascade="all, delete-orphan"
     )
 
+
 class ChatMember(Base):
     """
     Join table: which users are part of which Telegram chat
     """
+
     __tablename__ = "chat_members"
-    __table_args__ = (
-        UniqueConstraint("chat_id", "user_id", name="uq_chat_member"),
-    )
+    __table_args__ = (UniqueConstraint("chat_id", "user_id", name="uq_chat_member"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    chat_id: Mapped[int] = mapped_column(ForeignKey("chats.id", ondelete="CASCADE"), index=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    chat_id: Mapped[int] = mapped_column(
+        ForeignKey("chats.id", ondelete="CASCADE"), index=True
+    )
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
 
     chat: Mapped["Chat"] = relationship(back_populates="members")
     user: Mapped["User"] = relationship(back_populates="chats")
@@ -70,26 +87,30 @@ class ChatMember(Base):
 
 class Expense(Base):
     __tablename__ = "expenses"
-    
+
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     chat_id: Mapped[int] = mapped_column(ForeignKey("chats.id"), index=True)
     payer_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
 
     amount: Mapped[Decimal] = mapped_column(Numeric(10, 2))
     description: Mapped[str] = mapped_column(String(255))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
- 
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+
     chat: Mapped["Chat"] = relationship(back_populates="expenses")
     payer: Mapped["User"] = relationship(back_populates="paid_expenses")
     splits: Mapped[list["ExpenseSplit"]] = relationship(
         back_populates="expense", cascade="all, delete-orphan"
     )
 
+
 class ExpenseSplit(Base):
     """
     How much a user owes from an expense
     Sum(splits.amount) should equal Expense.amount
     """
+
     __tablename__ = "expense_splits"
     __table_args__ = (
         UniqueConstraint("expense_id", "user_id", name="uq_expense_split_user"),
@@ -97,7 +118,9 @@ class ExpenseSplit(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    expense_id: Mapped[int] = mapped_column(ForeignKey("expenses.id", ondelete="CASCADE"), index=True)
+    expense_id: Mapped[int] = mapped_column(
+        ForeignKey("expenses.id", ondelete="CASCADE"), index=True
+    )
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
 
     amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
@@ -110,6 +133,7 @@ class Payment(Base):
     """
     from_user paid to_user
     """
+
     __tablename__ = "payments"
     __table_args__ = (
         CheckConstraint("amount > 0", name="ck_payment_amount_positive"),
@@ -117,13 +141,17 @@ class Payment(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    chat_id: Mapped[int] = mapped_column(ForeignKey("chats.id", ondelete="CASCADE"), index=True)
+    chat_id: Mapped[int] = mapped_column(
+        ForeignKey("chats.id", ondelete="CASCADE"), index=True
+    )
 
     from_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     to_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
 
     amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
 
     chat: Mapped["Chat"] = relationship(back_populates="payments")
     from_user: Mapped["User"] = relationship(
@@ -133,21 +161,27 @@ class Payment(Base):
         back_populates="received_payments", foreign_keys=[to_user_id]
     )
 
+
 class Balance(Base):
     """
     Net balance per user per chat
     """
+
     __tablename__ = "balances"
-    __table_args__ = (
-        UniqueConstraint("chat_id", "user_id", name="uq_chat_balance"),
-    )
+    __table_args__ = (UniqueConstraint("chat_id", "user_id", name="uq_chat_balance"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    chat_id: Mapped[int] = mapped_column(ForeignKey("chats.id", ondelete="CASCADE"), index=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    chat_id: Mapped[int] = mapped_column(
+        ForeignKey("chats.id", ondelete="CASCADE"), index=True
+    )
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
 
     balance: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
 
     chat: Mapped["Chat"] = relationship(back_populates="balances")
     user: Mapped["User"] = relationship(back_populates="balances")

@@ -67,7 +67,7 @@ class Dinic:
         """Compute and return the maximum flow from *s* to *t*."""
         total = 0
         while self._bfs(s, t):
-            self._iter = [0] * self.n   # each index is the no.of edges at each node
+            self._iter = [0] * self.n  # each index is the no.of edges at each node
             while True:
                 f = self._dfs(s, t, float("inf"))  # type: ignore[arg-type]
                 if f == 0:

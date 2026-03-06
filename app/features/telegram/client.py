@@ -11,7 +11,6 @@ BASE = "https://api.telegram.org"
 COMMANDS_TEXT = (
     "📋 Commands\n"
     "────────────────────\n\n"
-
     "👥 Administrative\n"
     "/help — show this help message\n"
     "/join — register yourself in this group\n"
@@ -20,7 +19,6 @@ COMMANDS_TEXT = (
     "/add @user — add a member\n"
     "/remove @user — remove a member\n"
     "/home — view group status and net balances\n\n"
-
     "💰 Expenses\n"
     "/expense_view — view all expenses breakdown\n"
     "/expense_add <Category> <Amount> [split rule] — add an expense\n"
@@ -28,25 +26,20 @@ COMMANDS_TEXT = (
     "/expense_remove <Expense ID> — remove an expense by ID\n\n"
     "/pay @user <amount> — record a payment you made to a user\n"
     "  Example: /pay @John 25\n\n"
-
     "🔀 Split Rules (optional)\n"
     "If omitted, expense is split equally among everyone.\n\n"
-
     "• Equal split (default):\n"
     "  /expense_add Dinner 48.50\n\n"
-
     "• Equal split among selected users:\n"
     "  @John @Ben @Calvin @Dylan\n\n"
-
     "• Exact amounts:\n"
     "  @John=10 @Ben=20 @Dylan=18.5\n\n"
-
     "• Percentages:\n"
     "  @John=50% @Ben=50%\n\n"
-
     "• Shares:\n"
     "  @John=2 @Ben=1 @Dylan=1\n"
 )
+
 
 # Interface for easier testing
 class Messenger(Protocol):
@@ -57,8 +50,8 @@ class Messenger(Protocol):
         reply_to_message_id: int | None = None,
         reply_markup: dict | None = None,
         parse_mode: str | None = None,
-    ) -> dict[str, Any]:
-        ...
+    ) -> dict[str, Any]: ...
+
 
 class TelegramAPI:
     def __init__(self, token: str, timeout: float = 10.0):
@@ -73,20 +66,20 @@ class TelegramAPI:
             {"command": "expense_add", "description": "Add an expense"},
             {"command": "expense_view", "description": "View all expenses"},
         ]
-    
+
     async def aclose(self) -> None:
         """Close the underlying HTTP client (e.g. on shutdown)."""
         await self._client.aclose()
-    
+
     async def send_message(
-        self, 
-        chat_id: int, 
-        text: str, 
+        self,
+        chat_id: int,
+        text: str,
         reply_to_message_id: int | None = None,
-        reply_markup: dict | None=None,
-        parse_mode: str | None=None
+        reply_markup: dict | None = None,
+        parse_mode: str | None = None,
     ) -> Dict[str, Any]:
-        
+
         payload: Dict[str, Any] = {
             "chat_id": chat_id,
             "text": text,
@@ -94,18 +87,21 @@ class TelegramAPI:
 
         if reply_markup:
             payload["reply_markup"] = reply_markup
-        if parse_mode: payload["parse_mode"] = parse_mode
-        if reply_to_message_id: 
+        if parse_mode:
+            payload["parse_mode"] = parse_mode
+        if reply_to_message_id:
             payload["reply_parameters"] = {"message_id": reply_to_message_id}
-        
+
         try:
             r = await self._client.post(f"/sendMessage", json=payload)
             r.raise_for_status()
-            
+
             data = r.json()
             if not data.get("ok"):
-                raise RuntimeError(f"Telegram API error: send message failed, {data.get('description')}")
-            
+                raise RuntimeError(
+                    f"Telegram API error: send message failed, {data.get('description')}"
+                )
+
             return data
         except Exception as e:
             logger.exception(f"Failed to send Telegram message: {e}")
@@ -113,23 +109,22 @@ class TelegramAPI:
 
     # A secret token to be sent in a header “X-Telegram-Bot-Api-Secret-Token” in every webhook request, 1-256 characters. Only characters A-Z, a-z, 0-9, _ and - are allowed. The header is useful to ensure that the request comes from a webhook set by you.
     async def set_webhook(self, url: str, secret_token: str) -> Dict[str, Any]:
-        payload = {
-            "url": url,
-            "secret_token": secret_token
-        }
+        payload = {"url": url, "secret_token": secret_token}
 
         try:
             r = await self._client.post(f"/setWebhook", data=payload)
             data = r.json()
 
             if not data.get("ok"):
-                raise RuntimeError(f"Telegram API error: set webhook failed, {data.get('description')}")
+                raise RuntimeError(
+                    f"Telegram API error: set webhook failed, {data.get('description')}"
+                )
 
             return data["result"]
         except Exception as e:
             logger.exception(f"Failed to set Telegram webhook: {e}")
             raise
-    
+
     async def get_updates(self, offset=None):
         params = {
             "offset": offset,
@@ -137,10 +132,15 @@ class TelegramAPI:
         r = await self._client.get(f"/getUpdates", params=params)
         return r.json()
 
-    async def answer_callback_query(self, callback_query_id: str, text: str | None = None, show_alert: bool = False, url: str | None = None, cache_time: int = 0):
-        payload: dict[str, Any] = {
-            "callback_query_id": callback_query_id
-        }
+    async def answer_callback_query(
+        self,
+        callback_query_id: str,
+        text: str | None = None,
+        show_alert: bool = False,
+        url: str | None = None,
+        cache_time: int = 0,
+    ):
+        payload: dict[str, Any] = {"callback_query_id": callback_query_id}
 
         if text:
             payload["text"] = text
@@ -150,20 +150,21 @@ class TelegramAPI:
             payload["url"] = url
         if cache_time:
             payload["cache_time"] = cache_time
-        
-        await self._client.post(f"/answerCallbackQuery", json=payload)
-    
 
-    async def setMyCommands(self, commands:List[Dict[str, str]], scope: Optional[Dict[str, Any]] = None, language_code: Optional[str] = None):
-        
-        payload: dict[str, Any] = {
-            "commands": commands
-        }
+        await self._client.post(f"/answerCallbackQuery", json=payload)
+
+    async def setMyCommands(
+        self,
+        commands: List[Dict[str, str]],
+        scope: Optional[Dict[str, Any]] = None,
+        language_code: Optional[str] = None,
+    ):
+
+        payload: dict[str, Any] = {"commands": commands}
 
         if scope:
             payload["scope"] = scope
         if language_code:
             payload["language_code"] = language_code
-        
+
         await self._client.post(f"/setMyCommands", json=payload)
-    

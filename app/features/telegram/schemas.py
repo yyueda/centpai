@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import List
 
+
 class User(BaseModel):
     id: int
     is_bot: bool
@@ -8,15 +9,18 @@ class User(BaseModel):
     last_name: str | None = None
     username: str
 
+
 class Chat(BaseModel):
     id: int
     type: str
+
 
 class MessageEntity(BaseModel):
     type: str
     offset: int
     length: int
     user: User | None = None
+
 
 class Message(BaseModel):
     message_id: int
@@ -25,8 +29,10 @@ class Message(BaseModel):
     text: str | None = None
     entities: List[MessageEntity] | None = None
 
+
 class ChatMember(BaseModel):
     status: str
+
 
 class ChatMemberUpdated(BaseModel):
     chat: Chat
@@ -35,11 +41,13 @@ class ChatMemberUpdated(BaseModel):
     old_chat_member: ChatMember
     new_chat_member: ChatMember
 
+
 class CallbackQuery(BaseModel):
     id: str
     from_: User = Field(alias="from")
     message: Message
     data: str | None = None
+
 
 class Update(BaseModel):
     update_id: int

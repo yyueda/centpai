@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 from app.features.telegram.schemas import Update
 
+
 @dataclass(frozen=True)
 class TgContext:
     tg_chat_id: int
@@ -11,6 +12,7 @@ class TgContext:
     last_name: str | None
     message_id: int | None
     text: str | None
+
 
 def build_context_from_update(u: Update) -> TgContext | None:
     # Defaults for update types that don't carry message
@@ -47,5 +49,5 @@ def build_context_from_update(u: Update) -> TgContext | None:
         first_name=user.first_name,
         last_name=user.last_name,
         message_id=message_id,
-        text=text
+        text=text,
     )

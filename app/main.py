@@ -7,8 +7,18 @@ from app.features.expenses.repo import ExpensesRepository, get_repo
 from app.features.expenses.service import ExpensesService, get_service
 from app.features.telegram.commands.admin import handleHelp, handleInit
 from app.features.telegram.commands.command_parser import CommandName, parse_command
-from app.features.telegram.commands.expenses import handleAddExpense, handleDebts, handleListExpenses, handleRemoveExpense, handlePay
-from app.features.telegram.commands.members import handleJoin, handleLeave, handleListMembers
+from app.features.telegram.commands.expenses import (
+    handleAddExpense,
+    handleDebts,
+    handleListExpenses,
+    handleRemoveExpense,
+    handlePay,
+)
+from app.features.telegram.commands.members import (
+    handleJoin,
+    handleLeave,
+    handleListMembers,
+)
 from app.features.telegram.context import build_context_from_update
 from app.features.telegram.schemas import Update
 from app.core.logging import setup_logging
@@ -19,21 +29,23 @@ from app.db.database import init_reset_db_dev
 setup_logging()
 logger = logging.getLogger("webhook")
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await init_reset_db_dev() #dev purposes
+    await init_reset_db_dev()  # dev purposes
     # await init_db()
 
     tg = client.TelegramAPI(settings.BOT_TOKEN)
     await tg.setMyCommands(tg.commands)
     await tg.set_webhook(
-        url=f"{settings.NGROK_URL}/webhook", 
-        secret_token="test_secret")
+        url=f"{settings.NGROK_URL}/webhook", secret_token="test_secret"
+    )
     app.state.telegram = tg
     yield
 
     # Cleanup
     await tg.aclose()
+
 
 app = FastAPI(lifespan=lifespan)
 
@@ -41,6 +53,7 @@ app = FastAPI(lifespan=lifespan)
 @app.get("/")
 def read_root():
     return {"Hello": "World"}
+
 
 @app.post("/webhook")
 async def read_webhook(
@@ -60,10 +73,13 @@ async def read_webhook(
         old_status = bot_status_change.old_chat_member.status
         new_status = bot_status_change.new_chat_member.status
 
-        if old_status in ("kicked", "left") and new_status in ("member", "administrator"):
+        if old_status in ("kicked", "left") and new_status in (
+            "member",
+            "administrator",
+        ):
             # bot just added to the group, send welcome message
             await handleInit(ctx, tg, svc)
-    
+
     try:
         if update.message:
             command = parse_command(update.message)
@@ -79,7 +95,9 @@ async def read_webhook(
                     case CommandName.JOIN:
                         await handleJoin(ctx, tg, svc)
                     case CommandName.EXPENSE_ADD:
-                        await handleAddExpense(ctx, tg, svc, command.args, command.mentioned_usernames)
+                        await handleAddExpense(
+                            ctx, tg, svc, command.args, command.mentioned_usernames
+                        )
                     case CommandName.EXPENSE_VIEW:
                         await handleListExpenses(ctx, tg, svc)
                     case CommandName.EXPENSE_REMOVE:
@@ -99,7 +117,9 @@ async def read_webhook(
 
             # message can be None in some callback scenarios
             if cq.message is None:
-                await tg.answer_callback_query(callback_query_id=callback_id, text="Unsupported action.")
+                await tg.answer_callback_query(
+                    callback_query_id=callback_id, text="Unsupported action."
+                )
                 return {"ok": True}
 
             match data:
@@ -113,8 +133,9 @@ async def read_webhook(
                     await handleHelp(ctx, tg)
     except Exception:
         logger.exception("Failed to handle update")
-            
+
     return {"ok": True}
+
 
 @app.get("/items/{item_id}")
 def read_item(item_id: int, q: Union[str, None] = None):

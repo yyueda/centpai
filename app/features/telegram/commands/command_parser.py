@@ -4,6 +4,7 @@ from typing import List
 
 from app.features.telegram.schemas import Message, MessageEntity
 
+
 class CommandName(StrEnum):
     MEMBERS = "/members"
     HELP = "/help"
@@ -15,13 +16,15 @@ class CommandName(StrEnum):
     PAY = "/pay"
     DEBTS = "/debts"
 
-@dataclass(frozen=True) # Immutable
+
+@dataclass(frozen=True)  # Immutable
 class Command:
     name: CommandName
     args: List[str]
     args_text: str
     mentioned_user_ids: List[int]
     mentioned_usernames: List[str]
+
 
 def _find_command_entity(message: Message) -> MessageEntity | None:
     """Find the bot_command entity that starts at the beginning of the message."""
@@ -32,6 +35,7 @@ def _find_command_entity(message: Message) -> MessageEntity | None:
             return e
     return None
 
+
 def _slice_entity_text(text: str, entity: MessageEntity) -> str:
     """Return the substring of `text` covered by this entity."""
     utf16 = text.encode("utf-16-le")
@@ -39,11 +43,13 @@ def _slice_entity_text(text: str, entity: MessageEntity) -> str:
     end = (entity.offset + entity.length) * 2
     return utf16[start:end].decode("utf-16-le")
 
+
 def _slice_from_utf16_offset(text: str, utf16_offset: int) -> str:
     """Return the substring of `text` starting at a UTF-16 code unit offset."""
     utf16 = text.encode("utf-16-le")
     start = utf16_offset * 2
     return utf16[start:].decode("utf-16-le")
+
 
 def parse_command(message: Message) -> Command | None:
     if not message.text:
@@ -86,5 +92,5 @@ def parse_command(message: Message) -> Command | None:
         args=args,
         args_text=raw_args,
         mentioned_user_ids=mentioned_user_ids,
-        mentioned_usernames=mentioned_usernames
+        mentioned_usernames=mentioned_usernames,
     )

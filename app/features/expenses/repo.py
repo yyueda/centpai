@@ -7,17 +7,25 @@ from sqlalchemy.exc import IntegrityError
 from fastapi import Depends
 
 from app.db.database import get_session
-from app.features.expenses.models import Balance, Chat, ChatMember, Expense, ExpenseSplit, Payment, User
+from app.features.expenses.models import (
+    Balance,
+    Chat,
+    ChatMember,
+    Expense,
+    ExpenseSplit,
+    Payment,
+    User,
+)
 
 
 def get_repo(session: AsyncSession = Depends(get_session)) -> "ExpensesRepository":
-        return ExpensesRepository(session)
+    return ExpensesRepository(session)
 
 
 class ExpensesRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
-    
+
     # ------------------------------------------------------------------
     # CHATS
     # ------------------------------------------------------------------
@@ -38,12 +46,12 @@ class ExpensesRepository:
             await self.db.flush()
             return chat
         except IntegrityError:
-           # another concurrent request inserted first
+            # another concurrent request inserted first
             chat = await self.get_chat_by_tg_id(tg_chat_id)
             if not chat:
                 raise
             return chat
-        
+
     # ------------------------------------------------------------------
     # USERS
     # ------------------------------------------------------------------
@@ -72,7 +80,7 @@ class ExpensesRepository:
         self.db.add(user)
 
         try:
-            await self.db.flush() # assigns user.id
+            await self.db.flush()  # assigns user.id
             return user
         except IntegrityError:
             user = await self.get_user_by_tg_id(tg_user_id)
@@ -91,6 +99,7 @@ class ExpensesRepository:
 
     async def add_member(self, chat_id: int, user_id: int) -> None:
         from sqlalchemy.dialects.postgresql import insert
+
         stmt = (
             insert(ChatMember)
             .values(chat_id=chat_id, user_id=user_id)
@@ -142,7 +151,9 @@ class ExpensesRepository:
         )
         return (await self.db.scalar(stmt)) is not None
 
-    async def convert_users_to_chatmembers(self, chat_id: int, users: list[User]) -> list[ChatMember]:
+    async def convert_users_to_chatmembers(
+        self, chat_id: int, users: list[User]
+    ) -> list[ChatMember]:
         user_ids = [u.id for u in users]
         stmt = (
             select(ChatMember)
@@ -150,7 +161,7 @@ class ExpensesRepository:
             .options(selectinload(ChatMember.user))
         )
         members = list((await self.db.scalars(stmt)).all())
-        
+
         return members
 
     # ------------------------------------------------------------------
@@ -158,18 +169,15 @@ class ExpensesRepository:
     # ------------------------------------------------------------------
 
     async def create_expense(
-        self, 
-        chat_id: int, 
-        user_id: int, 
-        amount: Decimal, 
+        self,
+        chat_id: int,
+        user_id: int,
+        amount: Decimal,
         description: str,
     ) -> None:
-        
+
         expense = Expense(
-            chat_id=chat_id,
-            payer_id=user_id,
-            amount=amount,
-            description=description
+            chat_id=chat_id, payer_id=user_id, amount=amount, description=description
         )
 
         self.db.add(expense)
@@ -184,8 +192,10 @@ class ExpensesRepository:
             select(Expense)
             .where(Expense.chat_id == chat_id)
             .options(
-                selectinload(Expense.splits).selectinload(ExpenseSplit.user),      # loads splits for balance calc
-                selectinload(Expense.payer),       # optional: payer details
+                selectinload(Expense.splits).selectinload(
+                    ExpenseSplit.user
+                ),  # loads splits for balance calc
+                selectinload(Expense.payer),  # optional: payer details
             )
             .order_by(Expense.created_at.desc())
             .limit(limit)
@@ -209,12 +219,14 @@ class ExpensesRepository:
     # PAYMENTS
     # ------------------------------------------------------------------
 
-    async def create_payment(self, chat_id: int, from_user_id: int, to_user_id: int, amount: Decimal) -> None:
+    async def create_payment(
+        self, chat_id: int, from_user_id: int, to_user_id: int, amount: Decimal
+    ) -> None:
         payment = Payment(
             chat_id=chat_id,
             from_user_id=from_user_id,
             to_user_id=to_user_id,
-            amount=amount
+            amount=amount,
         )
         self.db.add(payment)
         await self.db.flush()
@@ -238,14 +250,16 @@ class ExpensesRepository:
     # ------------------------------------------------------------------
 
     async def get_user_balance(self, chat_id: int, user_id: int) -> Balance | None:
-        stmt = select(Balance).where(Balance.chat_id == chat_id, Balance.user_id == user_id)
+        stmt = select(Balance).where(
+            Balance.chat_id == chat_id, Balance.user_id == user_id
+        )
         return await self.db.scalar(stmt)
-    
+
     async def create_balance(self, chat_id: int, user_id: int) -> None:
         bal = await self.get_user_balance(chat_id, user_id)
         if bal:
             return
-        
+
         bal = Balance(chat_id=chat_id, user_id=user_id, balance=Decimal("0.00"))
         self.db.add(bal)
         await self.db.flush()
@@ -265,19 +279,23 @@ class ExpensesRepository:
         res = (await self.db.scalars(stmt)).all()
         return list(res)
 
-    async def update_balances(self, chat_id: int, deltas: dict[int, Decimal]) -> list[Balance]:
+    async def update_balances(
+        self, chat_id: int, deltas: dict[int, Decimal]
+    ) -> list[Balance]:
         balances = await self.list_balances(chat_id)
         bal_by_user = {b.user_id: b for b in balances}
 
         for user_id, delta in deltas.items():
             bal = bal_by_user[user_id]
             bal.balance += delta
-        
+
         await self.db.flush()
         return list(bal_by_user.values())
 
     # TODO
-    async def update_balance(self, chat_id: int, from_user_id: int, to_user_id: int, amount: Decimal):
+    async def update_balance(
+        self, chat_id: int, from_user_id: int, to_user_id: int, amount: Decimal
+    ):
         from_user_balance = await self.get_user_balance(chat_id, from_user_id)
         to_user_balance = await self.get_user_balance(chat_id, to_user_id)
         assert from_user_balance is not None
@@ -287,25 +305,23 @@ class ExpensesRepository:
 
         await self.db.flush()
 
-    async def get_pairwise_debt(self, chat_id: int, from_user_id: int, to_user_id: int) -> Decimal:
+    async def get_pairwise_debt(
+        self, chat_id: int, from_user_id: int, to_user_id: int
+    ) -> Decimal:
         stmt = (
             select(func.sum(ExpenseSplit.amount))
             .join(ExpenseSplit.expense)
             .where(
                 ExpenseSplit.user_id == from_user_id,
-                ExpenseSplit.expense.has(Expense.payer_id == to_user_id)
+                ExpenseSplit.expense.has(Expense.payer_id == to_user_id),
             )
         )
         total_amount_owed = await self.db.scalar(stmt)
         if not total_amount_owed:
             total_amount_owed = Decimal("0")
 
-        stmt = (
-            select(func.sum(Payment.amount))
-            .where(
-                Payment.from_user_id == from_user_id,
-                Payment.to_user_id == to_user_id
-            )
+        stmt = select(func.sum(Payment.amount)).where(
+            Payment.from_user_id == from_user_id, Payment.to_user_id == to_user_id
         )
 
         total_amount_paid = await self.db.scalar(stmt)
