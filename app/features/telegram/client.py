@@ -48,7 +48,7 @@ class Messenger(Protocol):
         chat_id: int,
         text: str,
         reply_to_message_id: int | None = None,
-        reply_markup: dict | None = None,
+        reply_markup: dict[str, Any] | None = None,
         parse_mode: str | None = None,
     ) -> dict[str, Any]: ...
 

@@ -26,12 +26,10 @@ COMMANDS_TEXT = (
     "  /expense_add Dinner 48.50\n\n"
     "• Equal split among selected users:\n"
     "  @John @Ben @Calvin @Dylan\n\n"
-    "• Exact amounts:\n"
+    "• Exact amounts (Include your own username):\n"
     "  @John=10 @Ben=20 @Dylan=18.5\n\n"
-    "• Percentages:\n"
+    "• Percentages (Include your own username):\n"
     "  @John=50% @Ben=50%\n\n"
-    "• Shares:\n"
-    "  @John=2 @Ben=1 @Dylan=1\n"
 )
 
 
