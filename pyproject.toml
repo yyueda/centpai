@@ -39,4 +39,3 @@ dev = [
 pythonpath = ["."]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-timeout = 10
