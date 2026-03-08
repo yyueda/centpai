@@ -2,7 +2,6 @@ from decimal import Decimal
 from app.features.expenses.algorithms.simplify_debts import simplify_debts
 
 
-
 def test_no_balances_returns_empty():
     assert simplify_debts([]) == []
 
@@ -27,7 +26,6 @@ def test_debt_splits_across_creditors():
     result = simplify_debts(balances)
     total_paid = sum(a for _, _, a in result)
     assert total_paid == Decimal("10.00")
-
 
 
 def test_all_negative_returns_empty():

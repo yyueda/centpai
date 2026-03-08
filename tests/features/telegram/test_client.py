@@ -285,8 +285,16 @@ class TestSetMyCommands:
 
 class TestCommandsText:
     def test_contains_all_key_commands(self):
-        for cmd in ["/help", "/join", "/leave", "/members", "/expense_add",
-                    "/expense_view", "/expense_remove", "/pay"]:
+        for cmd in [
+            "/help",
+            "/join",
+            "/leave",
+            "/members",
+            "/expense_add",
+            "/expense_view",
+            "/expense_remove",
+            "/pay",
+        ]:
             assert cmd in COMMANDS_TEXT
 
     def test_contains_split_rules_section(self):

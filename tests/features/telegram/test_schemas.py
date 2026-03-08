@@ -37,7 +37,9 @@ class TestUser:
         assert u.last_name is None
 
     def test_with_last_name(self):
-        u = User(id=2, is_bot=False, first_name="Bob", last_name="Smith", username="bob")
+        u = User(
+            id=2, is_bot=False, first_name="Bob", last_name="Smith", username="bob"
+        )
         assert u.last_name == "Smith"
 
     def test_missing_required_field(self):

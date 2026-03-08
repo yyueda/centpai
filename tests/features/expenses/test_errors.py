@@ -108,9 +108,7 @@ class TestNoDebtOwedError:
 
 class TestPaymentExceedsDebtError:
     def test_message_contains_values(self):
-        err = PaymentExceedsDebtError(
-            Decimal("10.00"), Decimal("20.00"), "alice"
-        )
+        err = PaymentExceedsDebtError(Decimal("10.00"), Decimal("20.00"), "alice")
         assert "10" in err.message
         assert "20" in err.message
         assert "alice" in err.message

@@ -64,6 +64,7 @@ def make_scalars_result(items):
 # CHATS
 # ------------------------------------------------------------------
 
+
 class TestGetChatByTgId:
     @pytest.mark.asyncio
     async def test_returns_chat_when_found(self):
@@ -127,6 +128,7 @@ class TestGetOrCreateChat:
 # ------------------------------------------------------------------
 # USERS
 # ------------------------------------------------------------------
+
 
 class TestGetUserByTgId:
     @pytest.mark.asyncio
@@ -213,6 +215,7 @@ class TestGetUserByUsername:
 # MEMBERS
 # ------------------------------------------------------------------
 
+
 class TestAddMember:
     @pytest.mark.asyncio
     async def test_executes_insert(self):
@@ -293,6 +296,7 @@ class TestIsMember:
 # ------------------------------------------------------------------
 # EXPENSES
 # ------------------------------------------------------------------
+
 
 class TestCreateExpense:
     @pytest.mark.asyncio
@@ -383,6 +387,7 @@ class TestRemoveExpense:
 # PAYMENTS
 # ------------------------------------------------------------------
 
+
 class TestCreatePayment:
     @pytest.mark.asyncio
     async def test_adds_and_flushes(self):
@@ -422,6 +427,7 @@ class TestListPayments:
 # ------------------------------------------------------------------
 # BALANCES
 # ------------------------------------------------------------------
+
 
 class TestGetUserBalance:
     @pytest.mark.asyncio
@@ -526,9 +532,7 @@ class TestGetPairwiseDebt:
         db = make_db()
         db.scalar.side_effect = [Decimal("30.00"), Decimal("10.00")]
         repo = make_repo(db)
-        result = await repo.get_pairwise_debt(
-            chat_id=1, from_user_id=1, to_user_id=2
-        )
+        result = await repo.get_pairwise_debt(chat_id=1, from_user_id=1, to_user_id=2)
         assert result == Decimal("20.00")
 
     @pytest.mark.asyncio
@@ -536,9 +540,7 @@ class TestGetPairwiseDebt:
         db = make_db()
         db.scalar.side_effect = [None, None]
         repo = make_repo(db)
-        result = await repo.get_pairwise_debt(
-            chat_id=1, from_user_id=1, to_user_id=2
-        )
+        result = await repo.get_pairwise_debt(chat_id=1, from_user_id=1, to_user_id=2)
         assert result == Decimal("0")
 
     @pytest.mark.asyncio
@@ -546,7 +548,5 @@ class TestGetPairwiseDebt:
         db = make_db()
         db.scalar.side_effect = [Decimal("50.00"), None]
         repo = make_repo(db)
-        result = await repo.get_pairwise_debt(
-            chat_id=1, from_user_id=1, to_user_id=2
-        )
+        result = await repo.get_pairwise_debt(chat_id=1, from_user_id=1, to_user_id=2)
         assert result == Decimal("50.00")

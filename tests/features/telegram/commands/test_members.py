@@ -1,7 +1,11 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from app.features.expenses.errors import ChatNotFound, NotMember
-from app.features.telegram.commands.members import handleJoin, handleListMembers, handleLeave
+from app.features.telegram.commands.members import (
+    handleJoin,
+    handleListMembers,
+    handleLeave,
+)
 
 
 def make_ctx(username="alice", chat_id=100, user_id=1, message_id=1):

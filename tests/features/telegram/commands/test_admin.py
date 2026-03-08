@@ -110,7 +110,9 @@ class TestHandleInit:
     async def test_welcome_keyboard_has_join_button(self):
         ctx, messenger, svc = make_ctx(), make_messenger(), make_svc()
         await handleInit(ctx, messenger, svc)
-        keyboard = messenger.send_message.call_args[1]["reply_markup"]["inline_keyboard"]
+        keyboard = messenger.send_message.call_args[1]["reply_markup"][
+            "inline_keyboard"
+        ]
         flat_buttons = [btn for row in keyboard for btn in row]
         texts = [b["text"] for b in flat_buttons]
         assert any("Join" in t for t in texts)
@@ -119,7 +121,9 @@ class TestHandleInit:
     async def test_welcome_keyboard_has_leave_button(self):
         ctx, messenger, svc = make_ctx(), make_messenger(), make_svc()
         await handleInit(ctx, messenger, svc)
-        keyboard = messenger.send_message.call_args[1]["reply_markup"]["inline_keyboard"]
+        keyboard = messenger.send_message.call_args[1]["reply_markup"][
+            "inline_keyboard"
+        ]
         flat_buttons = [btn for row in keyboard for btn in row]
         texts = [b["text"] for b in flat_buttons]
         assert any("Leave" in t for t in texts)
@@ -128,7 +132,9 @@ class TestHandleInit:
     async def test_welcome_keyboard_has_callback_data(self):
         ctx, messenger, svc = make_ctx(), make_messenger(), make_svc()
         await handleInit(ctx, messenger, svc)
-        keyboard = messenger.send_message.call_args[1]["reply_markup"]["inline_keyboard"]
+        keyboard = messenger.send_message.call_args[1]["reply_markup"][
+            "inline_keyboard"
+        ]
         flat_buttons = [btn for row in keyboard for btn in row]
         assert all("callback_data" in b for b in flat_buttons)
 

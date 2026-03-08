@@ -36,11 +36,15 @@ def make_command_entity(length, offset=0):
 
 class TestSliceEntityText:
     def test_basic_ascii(self):
-        result = _slice_entity_text("hello world", MessageEntity(type="x", offset=0, length=5))
+        result = _slice_entity_text(
+            "hello world", MessageEntity(type="x", offset=0, length=5)
+        )
         assert result == "hello"
 
     def test_offset(self):
-        result = _slice_entity_text("/help me", MessageEntity(type="x", offset=0, length=5))
+        result = _slice_entity_text(
+            "/help me", MessageEntity(type="x", offset=0, length=5)
+        )
         assert result == "/help"
 
     def test_unicode(self):
@@ -176,7 +180,9 @@ class TestParseCommand:
 
     def test_text_mention_extracted(self):
         mentioned_user = make_user(username="bob")
-        user_entity = MessageEntity(type="text_mention", offset=5, length=3, user=mentioned_user)
+        user_entity = MessageEntity(
+            type="text_mention", offset=5, length=3, user=mentioned_user
+        )
         cmd_entity = make_command_entity(length=4)
         msg = make_message("/pay Bob 25", entities=[cmd_entity, user_entity])
         cmd = parse_command(msg)

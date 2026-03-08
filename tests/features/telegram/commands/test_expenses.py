@@ -53,6 +53,7 @@ def make_svc():
 
 # ---- parse helpers ----
 
+
 class TestParseAmount:
     def test_valid_integer(self):
         assert parse_amount("10") == Decimal("10.00")
@@ -104,6 +105,7 @@ class TestParseUser:
 
 
 # ---- handler tests ----
+
 
 class TestHandleAddExpense:
     @pytest.mark.asyncio

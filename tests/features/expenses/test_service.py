@@ -75,7 +75,9 @@ def make_balance_obj(user_id=1, username="alice", balance=Decimal("0.00")):
     return bal
 
 
-def make_expense_obj(id=1, payer_username="alice", amount=Decimal("50.00"), splits=None):
+def make_expense_obj(
+    id=1, payer_username="alice", amount=Decimal("50.00"), splits=None
+):
     expense = MagicMock()
     expense.id = id
     expense.payer = MagicMock()
@@ -91,6 +93,7 @@ def make_expense_obj(id=1, payer_username="alice", amount=Decimal("50.00"), spli
 # ------------------------------------------------------------------
 # ADD MEMBER
 # ------------------------------------------------------------------
+
 
 class TestAddMember:
     @pytest.mark.asyncio
@@ -119,6 +122,7 @@ class TestAddMember:
 # ------------------------------------------------------------------
 # REMOVE MEMBER
 # ------------------------------------------------------------------
+
 
 class TestRemoveMember:
     @pytest.mark.asyncio
@@ -169,6 +173,7 @@ class TestRemoveMember:
 # GET MEMBERS
 # ------------------------------------------------------------------
 
+
 class TestGetMembers:
     @pytest.mark.asyncio
     async def test_returns_usernames(self):
@@ -207,6 +212,7 @@ class TestGetMembers:
 # ------------------------------------------------------------------
 # ADD EXPENSE
 # ------------------------------------------------------------------
+
 
 class TestAddExpense:
     @pytest.mark.asyncio
@@ -270,6 +276,7 @@ class TestAddExpense:
 # GET EXPENSES
 # ------------------------------------------------------------------
 
+
 class TestGetExpenses:
     @pytest.mark.asyncio
     async def test_returns_expense_dtos(self):
@@ -303,6 +310,7 @@ class TestGetExpenses:
 # ------------------------------------------------------------------
 # REMOVE EXPENSE
 # ------------------------------------------------------------------
+
 
 class TestRemoveExpense:
     @pytest.mark.asyncio
@@ -352,6 +360,7 @@ class TestRemoveExpense:
 # GET BALANCES
 # ------------------------------------------------------------------
 
+
 class TestGetBalances:
     @pytest.mark.asyncio
     async def test_returns_balance_dtos(self):
@@ -378,6 +387,7 @@ class TestGetBalances:
 # ------------------------------------------------------------------
 # GET SIMPLIFIED DEBTS
 # ------------------------------------------------------------------
+
 
 class TestGetSimplifiedDebts:
     @pytest.mark.asyncio
@@ -416,6 +426,7 @@ class TestGetSimplifiedDebts:
 # ------------------------------------------------------------------
 # PROCESS PAYMENT
 # ------------------------------------------------------------------
+
 
 class TestProcessPayment:
     @pytest.mark.asyncio
@@ -492,12 +503,13 @@ class TestProcessPayment:
 # CALC EQUAL SPLIT DELTAS (static helper)
 # ------------------------------------------------------------------
 
+
 class TestCalcEqualSplitDeltas:
     def test_two_members_equal_split(self):
         result = ExpensesService._calc_equal_split_deltas(
             Decimal("10.00"), payer_id=1, member_ids=[1, 2]
         )
-        assert result[1] == Decimal("5.00")   # payer gains amount - split
+        assert result[1] == Decimal("5.00")  # payer gains amount - split
         assert result[2] == Decimal("-5.00")  # non-payer owes split
 
     def test_three_members_equal_split(self):

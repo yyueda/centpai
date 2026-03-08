@@ -48,6 +48,7 @@ class TestBuildContextFromUpdate:
         # The schema requires username as a string, so we mock the user object
         # to simulate a user with no username at the context-building level
         from unittest.mock import MagicMock, patch
+
         mock_user = MagicMock()
         mock_user.username = None
         mock_user.id = 1

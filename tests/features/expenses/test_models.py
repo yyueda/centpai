@@ -96,8 +96,7 @@ class TestChatMemberModel:
 
     def test_table_args_has_unique_constraint(self):
         constraint_names = [
-            c.name for c in ChatMember.__table_args__
-            if hasattr(c, "name")
+            c.name for c in ChatMember.__table_args__ if hasattr(c, "name")
         ]
         assert "uq_chat_member" in constraint_names
 
@@ -140,15 +139,13 @@ class TestExpenseSplitModel:
 
     def test_table_args_has_unique_constraint(self):
         constraint_names = [
-            c.name for c in ExpenseSplit.__table_args__
-            if hasattr(c, "name")
+            c.name for c in ExpenseSplit.__table_args__ if hasattr(c, "name")
         ]
         assert "uq_expense_split_user" in constraint_names
 
     def test_table_args_has_check_constraint(self):
         constraint_names = [
-            c.name for c in ExpenseSplit.__table_args__
-            if hasattr(c, "name")
+            c.name for c in ExpenseSplit.__table_args__ if hasattr(c, "name")
         ]
         assert "ck_split_amount_non_negative" in constraint_names
 
@@ -176,15 +173,13 @@ class TestPaymentModel:
 
     def test_table_args_has_amount_check(self):
         constraint_names = [
-            c.name for c in Payment.__table_args__
-            if hasattr(c, "name")
+            c.name for c in Payment.__table_args__ if hasattr(c, "name")
         ]
         assert "ck_payment_amount_positive" in constraint_names
 
     def test_table_args_has_self_payment_check(self):
         constraint_names = [
-            c.name for c in Payment.__table_args__
-            if hasattr(c, "name")
+            c.name for c in Payment.__table_args__ if hasattr(c, "name")
         ]
         assert "ck_payment_not_to_self" in constraint_names
 
@@ -205,8 +200,7 @@ class TestBalanceModel:
 
     def test_table_args_has_unique_constraint(self):
         constraint_names = [
-            c.name for c in Balance.__table_args__
-            if hasattr(c, "name")
+            c.name for c in Balance.__table_args__ if hasattr(c, "name")
         ]
         assert "uq_chat_balance" in constraint_names
 
