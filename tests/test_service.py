@@ -1,10 +1,12 @@
+from datetime import datetime
+
 import pytest
 from decimal import Decimal
 from unittest.mock import AsyncMock, Mock
 from pytest_mock import MockerFixture
 from sqlalchemy.exc import IntegrityError
 from app.features.expenses.dto import BalanceDTO
-from app.features.expenses.errors import ChatNotFound, NotMember, ServerError, UserNotRegistered
+from app.features.expenses.errors import ChatNotFound, ExpenseNotFoundError, ExpenseNotOwnedError, NotMember, ServerError, UserNotRegistered
 from app.features.expenses.repo import ExpensesRepository
 from app.features.expenses.service import ExpensesService
 
@@ -179,6 +181,102 @@ class TestExpenses:
 
         with pytest.raises(ServerError):
             await service.add_expense(111, 222, Decimal("10.00"), "lunch")
+
+        mock_repo.db.rollback.assert_called_once()
+        mock_repo.db.commit.assert_not_called()
+    
+
+    async def test_get_expenses_success(
+        self, service: ExpensesService, mock_repo: Mock, mocker: MockerFixture
+    ) -> None:
+        split = mocker.Mock()
+        split.user.username = "bob"
+        split.amount = Decimal("5.00")
+    
+        expense = mocker.Mock()
+        expense.id = 1
+        expense.payer.username = "alice"
+        expense.amount = Decimal("10.00")
+        expense.description = "lunch"
+        expense.created_at = datetime(2026, 1, 1)
+        expense.splits = [split]
+
+        mock_repo.get_chat_by_tg_id.return_value = mocker.Mock(id=1)
+        mock_repo.list_expenses.return_value = [expense]
+
+        result = await service.get_expenses(1)
+
+        mock_repo.get_chat_by_tg_id.assert_called_once_with(1)
+        mock_repo.list_expenses.assert_called_once_with(1, 10)
+
+        assert len(result) == 1
+        assert result[0].paid_by == "alice"
+        assert result[0].amount == Decimal("10.00")
+        assert result[0].participants is not None
+        assert result[0].participants[0].username == "bob"
+        assert result[0].participants[0].amount_owed == Decimal("5.00")
+    
+    async def test_get_expenses_chat_not_found(
+        self, service: ExpensesService, mock_repo: Mock
+    ) -> None:
+        mock_repo.get_chat_by_tg_id.return_value = None
+
+        with pytest.raises(ChatNotFound):
+            await service.get_expenses(1)
+    
+
+    async def test_remove_expense_success(
+        self, service: ExpensesService, mock_repo: Mock, mocker: MockerFixture
+    ) -> None:
+        user = mocker.Mock(id=1, username="alice")
+        chat = mocker.Mock(id=10)                                                                                                                                                                       
+        expense = mocker.Mock(id=99, payer_id=1)
+
+        mock_repo.get_user_by_tg_id.return_value = user
+        mock_repo.get_chat_by_tg_id.return_value = chat
+        mock_repo.is_member.return_value = True
+        mock_repo.get_expense.return_value = expense
+
+        await service.remove_expense(10, 1, 99)
+
+        mock_repo.get_expense.assert_called_once_with(10, 99)
+        mock_repo.remove_expense.assert_called_once_with(expense)
+        mock_repo.db.commit.assert_called_once()
+        mock_repo.db.rollback.assert_not_called()
+
+
+    @pytest.mark.parametrize("user, chat, is_member, expense, expected_error", [
+        (None, Mock(), True, Mock(payer_id=1), UserNotRegistered),
+        (Mock(id=1), None, True, Mock(payer_id=1), ChatNotFound),
+        (Mock(id=1), Mock(), False, Mock(payer_id=1), NotMember),
+        (Mock(id=1), Mock(), True, None, ExpenseNotFoundError),
+        (Mock(id=1, username="alice"), Mock(), True, Mock(payer_id=99), ExpenseNotOwnedError),
+    ])
+    async def test_remove_expense_validation_errors(
+        self, service, mock_repo, user, chat, is_member, expense, expected_error
+    ) -> None:
+        mock_repo.get_user_by_tg_id.return_value = user
+        mock_repo.get_chat_by_tg_id.return_value = chat
+        mock_repo.is_member.return_value = is_member
+        mock_repo.get_expense.return_value = expense
+
+        with pytest.raises(expected_error):
+            await service.remove_expense(111, 222, expense_id=99)
+
+        mock_repo.db.rollback.assert_called_once()
+        mock_repo.db.commit.assert_not_called()
+
+    async def test_remove_expense_integrity_error_raises_server_error(
+        self, service: ExpensesService, mock_repo: Mock, mocker: MockerFixture
+    ) -> None:
+        mock_repo.get_user_by_tg_id.return_value = mocker.Mock(id=1, username="alice")
+        mock_repo.get_chat_by_tg_id.return_value = mocker.Mock(id=10)
+        mock_repo.is_member.return_value = True
+        mock_repo.get_expense.return_value = mocker.Mock(payer_id=1)
+        mock_repo.remove_expense.side_effect = IntegrityError(None, None, Exception())
+
+        with pytest.raises(ServerError):
+            await service.remove_expense(111, 222, expense_id=99)
 
         mock_repo.db.rollback.assert_called_once()
         mock_repo.db.commit.assert_not_called()
