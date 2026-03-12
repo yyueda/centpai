@@ -91,7 +91,7 @@ class ExpensesService:
         return [
             (
                 member.user.username if member.user.username else str(member.user.id)
-            )  # TODO: we should make username nullable=False
+            )
             for member in members
         ]
 
@@ -163,10 +163,10 @@ class ExpensesService:
                 raise NotMember()
             
             userid_to_amount = {}
-            for username, amt in usernameToAmount:
+            for username, amt in usernameToAmount.items():
                 user = await self.repo.get_user_by_username(username)
                 if not user:
-                    raise UserNotRegistered(message="User {username} is not registered yet.")
+                    raise UserNotRegistered(message=f"User {username} is not registered yet.")
                 is_member = await self.repo.is_member(chat.id, user.id)
                 if not is_member:
                     raise NotMember(username=username)
@@ -175,7 +175,6 @@ class ExpensesService:
             
             await self.repo.create_expense(chat.id, user.id, amount, desc, userid_to_amount)
             await self.repo.update_balances_split_rule(chat.id, user.id, amount, userid_to_amount)
-            #TODO: call update balances here
 
         except IntegrityError as e:
             await self.repo.db.rollback()
