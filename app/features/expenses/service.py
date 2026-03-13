@@ -1,4 +1,4 @@
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import ROUND_DOWN, ROUND_HALF_UP, Decimal
 
 from fastapi import Depends
 from app.core.errors import DomainError
@@ -282,6 +282,10 @@ class ExpensesService:
             SimplifiedDebtDTO(from_user=f, to_user=t, amount=a) for f, t, a in payments
         ]
 
+    # ------------------------------------------------------------------
+    # PAYMENTS
+    # --------------------------------------------------------------------
+
     async def process_payment(
         self, tg_chat_id: int, tg_user_id: int, to_username: str, amount: Decimal
     ) -> None:
@@ -347,15 +351,35 @@ class ExpensesService:
         """
         Returns {user_id: balance_delta} for an equal split.
         Positive = gains (payer), negative = owes (non-payer).
+        For uneven splits, first member absorbs rounding diff.
         """
+        # | Value | HALF_UP | HALF_DOWN | HALF_EVEN | DOWN |
+        # | ----- | ------- | --------- | --------- | ---- |
+        # | 3.334 | 3.33    | 3.33      | 3.33      | 3.33 |
+        # | 3.335 | 3.34    | 3.33      | 3.34*     | 3.33 |
+        # | 3.336 | 3.34    | 3.34      | 3.34      | 3.33 |
+
+        # Ensure amount is quantized first
+        amount = amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         n = len(member_ids)
-        split_amount = Decimal(amount / n).quantize(
-            Decimal("0.01"), rounding=ROUND_HALF_UP
-        )
-        return {
-            uid: (amount - split_amount if uid == payer_id else -split_amount)
-            for uid in member_ids
-        }
+        
+        if n == 0:
+            return {payer_id: amount}
+
+        base_share = (amount / n).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
+        deltas = {uid: -base_share for uid in member_ids}
+
+        total_assigned = base_share * n
+        remainder = (amount - total_assigned).quantize(Decimal("0.01"))
+
+        cents = int(remainder * 100)
+        non_payers = [uid for uid in member_ids if uid != payer_id]
+        for uid in non_payers[:cents]:
+            deltas[uid] -= Decimal("0.01")
+
+        deltas[payer_id] += amount
+
+        return deltas
     
     @staticmethod
     def _calc_split_rule_deltas(
@@ -371,3 +395,4 @@ class ExpensesService:
             userid: (amount-amt if userid == payer_id else -amt)
             for userid, amt in userid_to_amount.items()
         }
+ 
