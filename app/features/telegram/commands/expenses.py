@@ -30,12 +30,11 @@ async def handleAddExpense(
         print(f"desc is {desc}")
 
         if len_mentioned_usernames > 0:
-            # check if there is = sign after username, if no then equal split
             usernameToAmount = check_split_rule(
                 args[len(args) - len_mentioned_usernames :]
             , amount, ctx.username)
             print(usernameToAmount)
-            await svc.add_expense_selected_users(
+            updated_balances = await svc.add_expense_selected_users(
                 ctx.tg_chat_id,
                 ctx.tg_user_id,
                 amount,
@@ -48,20 +47,20 @@ async def handleAddExpense(
                 ctx.tg_chat_id, ctx.tg_user_id, amount, desc
             )
 
-            lines = [f"Expense added. Updated balances:"]
-            for b in updated_balances:
-                if b.balance == 0:
-                    continue
-                if b.balance < 0:
-                    lines.append(f"• {b.username} owes {-b.balance} in total")
-                else:
-                    lines.append(f"• {b.username} is owed {b.balance} in total")
+        lines = [f"Expense added.\n\nBalances:"]
+        for b in updated_balances:
+            if b.balance == 0:
+                continue
+            if b.balance < 0:
+                lines.append(f"• {b.username} owes {-b.balance} in total")
+            else:
+                lines.append(f"• {b.username} is owed {b.balance} in total")
 
-            await messenger.send_message(
-                chat_id=ctx.tg_chat_id,
-                text="\n".join(lines),
-                reply_to_message_id=ctx.message_id,
-            )
+        await messenger.send_message(
+            chat_id=ctx.tg_chat_id,
+            text="\n".join(lines),
+            reply_to_message_id=ctx.message_id,
+        )
     except ValueError as e:
         await messenger.send_message(
             ctx.tg_chat_id,
@@ -197,35 +196,25 @@ async def handleListExpenses(
         expenses = await svc.get_expenses(ctx.tg_chat_id)
         balances = await svc.get_balances(ctx.tg_chat_id)
         if expenses:
-            message_lines = ["Recent expenses:"]
+            message_lines = ["Recent Expenses"]
             for exp in expenses:
                 participants = exp.participants
-                message = [
-                    f"• Expense ID ({exp.id}), {exp.paid_by} paid {exp.amount} for {exp.desc} on {exp.created_at.strftime('%Y-%m-%d')}"
-                ]
+                lines = [f"[#{exp.id}] {exp.desc} — ${exp.amount} by {exp.paid_by} ({exp.created_at.strftime('%Y-%m-%d')})"]
                 if participants:
                     for participant in participants:
-                        message.append(
-                            f"• {participant.username} owes {participant.amount_owed}"
-                        )
+                        lines.append(f"  └ {participant.username} owes ${participant.amount_owed}")
+                message_lines.append("\n".join(lines))
 
-                message_lines.append("\n".join(message))
-
-            message_lines.append("Balances:")
-            message: list[str] = []
+            balance_lines = ["Balances"]
             for balance in balances:
                 if balance.balance == 0:
                     continue
                 if balance.balance < 0:
-                    message.append(
-                        f"• {balance.username} owes {-balance.balance} in total"
-                    )
+                    balance_lines.append(f"{balance.username} -${-balance.balance}")
                 else:
-                    message.append(
-                        f"• {balance.username} is owed {balance.balance} in total"
-                    )
+                    balance_lines.append(f"{balance.username} +${balance.balance}")
 
-            message_lines.append("\n".join(message))
+            message_lines.append("\n".join(balance_lines))
 
             await messenger.send_message(
                 chat_id=ctx.tg_chat_id,

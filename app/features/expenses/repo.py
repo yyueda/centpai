@@ -202,7 +202,6 @@ class ExpensesRepository:
             ]
             await self.add_splits(splits)
         else:
-            # members_to_amount = await self.convert_users_to_chatmembers(chat_id, userid_to_amount)
             splits = []
             for user_id, amt in userid_to_amount.items():
                 if user_id != payer_user_id:
@@ -324,17 +323,17 @@ class ExpensesRepository:
         await self.db.flush()
         return list(bal_by_user.values())
 
-    async def update_balances_split_rule(self, chat_id: int, paid_user_id: int, total_amount: Decimal, userid_to_amount: dict[int, Decimal]):
-        for user_id, amt in userid_to_amount.items():
-            bal = await self.get_user_balance(chat_id, user_id)
-            assert bal is not None
+    # async def update_balances_split_rule(self, chat_id: int, paid_user_id: int, total_amount: Decimal, userid_to_amount: dict[int, Decimal]):
+    #     for user_id, amt in userid_to_amount.items():
+    #         bal = await self.get_user_balance(chat_id, user_id)
+    #         assert bal is not None
 
-            if user_id != paid_user_id:
-                bal.balance -= amt
-            else:
-                bal.balance += total_amount - amt
+    #         if user_id != paid_user_id:
+    #             bal.balance -= amt
+    #         else:
+    #             bal.balance += total_amount - amt
         
-        await self.db.flush()
+    #     await self.db.flush()
     
     async def update_balance(self, chat_id: int, from_user_id: int, to_user_id: int, amount: Decimal):
         from_user_balance = await self.get_user_balance(chat_id, from_user_id)
