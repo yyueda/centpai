@@ -166,7 +166,7 @@ class ExpensesRepository:
         for member in members:
             amt = usersToAmount[member.user_id]
             memberToAmount[member] = amt
-        
+
         return memberToAmount
 
     # ------------------------------------------------------------------
@@ -183,7 +183,10 @@ class ExpensesRepository:
     ) -> None:
 
         expense = Expense(
-            chat_id=chat_id, payer_id=payer_user_id, amount=amount, description=description
+            chat_id=chat_id,
+            payer_id=payer_user_id,
+            amount=amount,
+            description=description,
         )
 
         self.db.add(expense)
@@ -191,25 +194,24 @@ class ExpensesRepository:
         # get all members of chat group
         if not userid_to_amount:
             members = await self.list_members(chat_id)
-            split_amount = Decimal(amount / len(members)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            split_amount = Decimal(amount / len(members)).quantize(
+                Decimal("0.01"), rounding=ROUND_HALF_UP
+            )
             splits = [
                 ExpenseSplit(
-                    user_id=member.user_id,
-                    amount=split_amount,
-                    expense=expense
+                    user_id=member.user_id, amount=split_amount, expense=expense
                 )
-                for member in members if member.user.id != payer_user_id
+                for member in members
+                if member.user.id != payer_user_id
             ]
             await self.add_splits(splits)
         else:
             splits = []
             for user_id, amt in userid_to_amount.items():
                 if user_id != payer_user_id:
-                    splits.append(ExpenseSplit(
-                        user_id=user_id,
-                        amount=amt,
-                        expense=expense
-                    ))
+                    splits.append(
+                        ExpenseSplit(user_id=user_id, amount=amt, expense=expense)
+                    )
             await self.add_splits(splits)
 
         await self.db.flush()  # assigns expense.id
@@ -332,10 +334,12 @@ class ExpensesRepository:
     #             bal.balance -= amt
     #         else:
     #             bal.balance += total_amount - amt
-        
+
     #     await self.db.flush()
-    
-    async def update_balance(self, chat_id: int, from_user_id: int, to_user_id: int, amount: Decimal):
+
+    async def update_balance(
+        self, chat_id: int, from_user_id: int, to_user_id: int, amount: Decimal
+    ):
         from_user_balance = await self.get_user_balance(chat_id, from_user_id)
         to_user_balance = await self.get_user_balance(chat_id, to_user_id)
         assert from_user_balance is not None
