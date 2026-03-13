@@ -7,7 +7,14 @@ from pytest_mock import MockerFixture
 from sqlalchemy.exc import IntegrityError
 from app.core.errors import DomainError
 from app.features.expenses.dto import BalanceDTO
-from app.features.expenses.errors import ChatNotFound, ExpenseNotFoundError, ExpenseNotOwnedError, NotMember, ServerError, UserNotRegistered
+from app.features.expenses.errors import (
+    ChatNotFound,
+    ExpenseNotFoundError,
+    ExpenseNotOwnedError,
+    NotMember,
+    ServerError,
+    UserNotRegistered,
+)
 from app.features.expenses.repo import ExpensesRepository
 from app.features.expenses.service import ExpensesService
 
@@ -65,12 +72,14 @@ class TestMembership:
         mock_repo.remove_member.assert_called_once_with(10, 1)
         mock_repo.db.commit.assert_called_once()
 
-
-    @pytest.mark.parametrize("user, chat, is_member, expected_error", [
-        (None, Mock(), True, UserNotRegistered),
-        (Mock(), None, True, ChatNotFound),
-        (Mock(), Mock(), False, NotMember),
-    ])
+    @pytest.mark.parametrize(
+        "user, chat, is_member, expected_error",
+        [
+            (None, Mock(), True, UserNotRegistered),
+            (Mock(), None, True, ChatNotFound),
+            (Mock(), Mock(), False, NotMember),
+        ],
+    )
     async def test_remove_member_validation_errors(
         self, service, mock_repo, user, chat, is_member, expected_error
     ):
@@ -80,11 +89,10 @@ class TestMembership:
 
         with pytest.raises(expected_error):
             await service.remove_member(123, 456)
-        
+
         mock_repo.db.rollback.assert_called_once()
         mock_repo.db.commit.assert_not_called()
 
-    
     async def test_remove_member_integrity_error_raises_server_error(
         self, service: ExpensesService, mock_repo: Mock
     ) -> None:
@@ -95,7 +103,7 @@ class TestMembership:
 
         mock_repo.db.rollback.assert_called_once()
         mock_repo.db.commit.assert_not_called()
-    
+
     async def test_get_members_success(
         self, service: ExpensesService, mock_repo: Mock, mocker: MockerFixture
     ) -> None:
@@ -119,6 +127,7 @@ class TestMembership:
 
         with pytest.raises(ChatNotFound):
             await service.get_members(999)
+
 
 class TestExpenses:
 
@@ -153,13 +162,22 @@ class TestExpenses:
             BalanceDTO(username="bob", balance=Decimal("-5")),
         ]
 
-    @pytest.mark.parametrize("user, chat, is_member, expected_error", [
-        (None, Mock(), False, UserNotRegistered),
-        (Mock(), None, True, ChatNotFound),
-        (Mock(), Mock(), False, NotMember),
-    ])
+    @pytest.mark.parametrize(
+        "user, chat, is_member, expected_error",
+        [
+            (None, Mock(), False, UserNotRegistered),
+            (Mock(), None, True, ChatNotFound),
+            (Mock(), Mock(), False, NotMember),
+        ],
+    )
     async def test_add_expense_validation_errors(
-        self, service: ExpensesService, mock_repo: Mock, user, chat, is_member, expected_error
+        self,
+        service: ExpensesService,
+        mock_repo: Mock,
+        user,
+        chat,
+        is_member,
+        expected_error,
     ) -> None:
         mock_repo.get_user_by_tg_id.return_value = user
         mock_repo.get_chat_by_tg_id.return_value = chat
@@ -185,7 +203,6 @@ class TestExpenses:
 
         mock_repo.db.rollback.assert_called_once()
         mock_repo.db.commit.assert_not_called()
-    
 
     async def test_get_expenses_success(
         self, service: ExpensesService, mock_repo: Mock, mocker: MockerFixture
@@ -193,7 +210,7 @@ class TestExpenses:
         split = mocker.Mock()
         split.user.username = "bob"
         split.amount = Decimal("5.00")
-    
+
         expense = mocker.Mock()
         expense.id = 1
         expense.payer.username = "alice"
@@ -216,7 +233,7 @@ class TestExpenses:
         assert result[0].participants is not None
         assert result[0].participants[0].username == "bob"
         assert result[0].participants[0].amount_owed == Decimal("5.00")
-    
+
     async def test_get_expenses_chat_not_found(
         self, service: ExpensesService, mock_repo: Mock
     ) -> None:
@@ -224,13 +241,12 @@ class TestExpenses:
 
         with pytest.raises(ChatNotFound):
             await service.get_expenses(1)
-    
 
     async def test_remove_expense_success(
         self, service: ExpensesService, mock_repo: Mock, mocker: MockerFixture
     ) -> None:
         user = mocker.Mock(id=1, username="alice")
-        chat = mocker.Mock(id=10)                                                                                                                                                                       
+        chat = mocker.Mock(id=10)
         expense = mocker.Mock(id=99, payer_id=1)
 
         mock_repo.get_user_by_tg_id.return_value = user
@@ -245,14 +261,22 @@ class TestExpenses:
         mock_repo.db.commit.assert_called_once()
         mock_repo.db.rollback.assert_not_called()
 
-
-    @pytest.mark.parametrize("user, chat, is_member, expense, expected_error", [
-        (None, Mock(), True, Mock(payer_id=1), UserNotRegistered),
-        (Mock(id=1), None, True, Mock(payer_id=1), ChatNotFound),
-        (Mock(id=1), Mock(), False, Mock(payer_id=1), NotMember),
-        (Mock(id=1), Mock(), True, None, ExpenseNotFoundError),
-        (Mock(id=1, username="alice"), Mock(), True, Mock(payer_id=99), ExpenseNotOwnedError),
-    ])
+    @pytest.mark.parametrize(
+        "user, chat, is_member, expense, expected_error",
+        [
+            (None, Mock(), True, Mock(payer_id=1), UserNotRegistered),
+            (Mock(id=1), None, True, Mock(payer_id=1), ChatNotFound),
+            (Mock(id=1), Mock(), False, Mock(payer_id=1), NotMember),
+            (Mock(id=1), Mock(), True, None, ExpenseNotFoundError),
+            (
+                Mock(id=1, username="alice"),
+                Mock(),
+                True,
+                Mock(payer_id=99),
+                ExpenseNotOwnedError,
+            ),
+        ],
+    )
     async def test_remove_expense_validation_errors(
         self, service, mock_repo, user, chat, is_member, expense, expected_error
     ) -> None:
@@ -289,9 +313,9 @@ class TestBalances:
         self, service: ExpensesService, mock_repo: Mock, mocker: MockerFixture
     ) -> None:
         user = mocker.Mock(id=1, username="alice")
-        chat = mocker.Mock(id=10)                                                                                                                                                                       
+        chat = mocker.Mock(id=10)
         balance = mocker.Mock(user=user, balance=Decimal("10.00"))
-    
+
         mock_repo.get_chat_by_tg_id.return_value = chat
         mock_repo.list_balances.return_value = [balance]
 
@@ -309,7 +333,6 @@ class TestBalances:
 
         with pytest.raises(DomainError):
             await service.get_balances(1)
-    
 
     async def test_simplified_debts_success(
         self, service: ExpensesService, mock_repo: Mock, mocker: MockerFixture
@@ -333,7 +356,6 @@ class TestBalances:
         assert result[0].to_user == "bob"
         assert result[0].amount == Decimal("20.00")
 
-    
     async def test_simplified_debts_chat_not_found(
         self, service: ExpensesService, mock_repo: Mock, mocker: MockerFixture
     ) -> None:
@@ -341,7 +363,7 @@ class TestBalances:
 
         with pytest.raises(DomainError):
             await service.get_simplified_debts(1)
-        
+
 
 class TestPayments:
 
@@ -391,7 +413,7 @@ class TestSplitCalculation:
 
         # Sum has to equal to 0
         assert deltas[1] + deltas[2] + deltas[3] == Decimal("0.00")
-    
+
     def test_calc_equal_split_zero_members(self, service: ExpensesService) -> None:
         """
         Tests if member_ids is an empty list.
