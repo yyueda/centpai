@@ -272,6 +272,10 @@ class ExpensesService:
             SimplifiedDebtDTO(from_user=f, to_user=t, amount=a) for f, t, a in payments
         ]
 
+    # ------------------------------------------------------------------
+    # PAYMENTS
+    # --------------------------------------------------------------------
+
     async def process_payment(
         self, tg_chat_id: int, tg_user_id: int, to_username: str, amount: Decimal
     ) -> None:

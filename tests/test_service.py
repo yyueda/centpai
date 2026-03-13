@@ -5,6 +5,7 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, Mock
 from pytest_mock import MockerFixture
 from sqlalchemy.exc import IntegrityError
+from app.core.errors import DomainError
 from app.features.expenses.dto import BalanceDTO
 from app.features.expenses.errors import ChatNotFound, ExpenseNotFoundError, ExpenseNotOwnedError, NotMember, ServerError, UserNotRegistered
 from app.features.expenses.repo import ExpensesRepository
@@ -281,6 +282,66 @@ class TestExpenses:
         mock_repo.db.rollback.assert_called_once()
         mock_repo.db.commit.assert_not_called()
 
+
+class TestBalances:
+
+    async def test_get_balances_success(
+        self, service: ExpensesService, mock_repo: Mock, mocker: MockerFixture
+    ) -> None:
+        user = mocker.Mock(id=1, username="alice")
+        chat = mocker.Mock(id=10)                                                                                                                                                                       
+        balance = mocker.Mock(user=user, balance=Decimal("10.00"))
+    
+        mock_repo.get_chat_by_tg_id.return_value = chat
+        mock_repo.list_balances.return_value = [balance]
+
+        result = await service.get_balances(1)
+
+        mock_repo.list_balances.assert_called_once_with(10)
+        assert result == [
+            BalanceDTO(username="alice", balance=Decimal("10.00")),
+        ]
+
+    async def test_get_balances_chat_not_found(
+        self, service: ExpensesService, mock_repo: Mock, mocker: MockerFixture
+    ) -> None:
+        mock_repo.get_chat_by_tg_id.return_value = None
+
+        with pytest.raises(DomainError):
+            await service.get_balances(1)
+    
+
+    async def test_simplified_debts_success(
+        self, service: ExpensesService, mock_repo: Mock, mocker: MockerFixture
+    ) -> None:
+        balance1 = mocker.Mock()
+        balance1.user.username = "alice"
+        balance1.balance = Decimal("-20.00")
+
+        balance2 = mocker.Mock()
+        balance2.user.username = "bob"
+        balance2.balance = Decimal("20.00")
+
+        mock_repo.get_chat_by_tg_id.return_value = mocker.Mock(id=10)
+        mock_repo.list_balances.return_value = [balance1, balance2]
+
+        result = await service.get_simplified_debts(1)
+
+        mock_repo.list_balances.assert_called_once_with(10)
+        assert len(result) == 1
+        assert result[0].from_user == "alice"
+        assert result[0].to_user == "bob"
+        assert result[0].amount == Decimal("20.00")
+
+    
+    async def test_simplified_debts_chat_not_found(
+        self, service: ExpensesService, mock_repo: Mock, mocker: MockerFixture
+    ) -> None:
+        mock_repo.get_chat_by_tg_id.return_value = None
+
+        with pytest.raises(DomainError):
+            await service.get_simplified_debts(1)
+        
 
 class TestPayments:
 
