@@ -379,7 +379,7 @@ class ExpensesService:
         deltas[payer_id] += amount
 
         return deltas
-    
+
     @staticmethod
     def _calc_split_rule_deltas(
         amount: Decimal,
@@ -394,4 +394,3 @@ class ExpensesService:
             userid: (amount - amt if userid == payer_id else -amt)
             for userid, amt in userid_to_amount.items()
         }
- 
