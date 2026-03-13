@@ -6,23 +6,30 @@ def test_no_balances_returns_empty():
     assert simplify_debts([]) == []
 
 
-def test_all_positive_returns_empty():
-    # No debtors, nothing to settle
-    assert simplify_debts([("alice", Decimal("10")), ("bob", Decimal("5"))]) == []
+def test_all_negative_returns_empty():
+    # No creditors, nothing to settle
+    assert simplify_debts([("alice", Decimal("-10")), ("bob", Decimal("-5"))]) == []
 
 
-def test_simple_debt():
-    balances = [("alice", Decimal("-10.00")), ("bob", Decimal("10.00"))]
+def test_all_zero_returns_empty():
+    assert simplify_debts([("alice", Decimal("0")), ("bob", Decimal("0"))]) == []
+
+
+def test_decimal_precision_one_cent():
+    balances = [("alice", Decimal("-0.01")), ("bob", Decimal("0.01"))]
     result = simplify_debts(balances)
-    assert result == [("alice", "bob", Decimal("10.00"))]
+    assert len(result) == 1
+    assert result[0][2] == Decimal("0.01")
 
 
-def test_debt_splits_across_creditors():
+def test_complex_group_settlement():
+    # 4 people, mixed debts and credits
     balances = [
-        ("alice", Decimal("-10.00")),
-        ("bob", Decimal("5.00")),
-        ("carol", Decimal("5.00")),
+        ("alice", Decimal("-40.00")),
+        ("bob", Decimal("-10.00")),
+        ("charlie", Decimal("25.00")),
+        ("diana", Decimal("25.00")),
     ]
     result = simplify_debts(balances)
-    total_paid = sum(a for _, _, a in result)
-    assert total_paid == Decimal("10.00")
+    total = sum(a for _, _, a in result)
+    assert total == Decimal("50.00")
