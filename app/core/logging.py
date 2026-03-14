@@ -40,7 +40,7 @@ LOGGING_CONFIG = {
     # PER-MODULE LOGGERS (optional)
     # -------------------------------------------------------------------------
     "loggers": {
-        "telegram": {
+        "centpai": {
             "handlers": ["console"],
             "level": "DEBUG",
             "propagate": False,

@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import Union
 from fastapi import Depends, FastAPI, Request
+from app.core.middleware import RateLimiterMiddleware
 from app.features.expenses.repo import ExpensesRepository, get_repo
 from app.features.expenses.service import ExpensesService, get_service
 from app.features.telegram.commands.admin import handleHelp, handleInit
@@ -27,7 +28,7 @@ from app.core.config import settings
 from app.db.database import init_reset_db_dev
 
 setup_logging()
-logger = logging.getLogger("webhook")
+logger = logging.getLogger("centpai")
 
 
 @asynccontextmanager
@@ -48,7 +49,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
-
+app.add_middleware(RateLimiterMiddleware)
 
 @app.get("/")
 def read_root():
