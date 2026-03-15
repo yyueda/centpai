@@ -51,9 +51,9 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 app.add_middleware(RateLimiterMiddleware)
 
-@app.get("/")
+@app.get("/health")
 def read_root():
-    return {"Hello": "World"}
+    return {"status": "ok"}
 
 
 @app.post("/webhook")
@@ -133,11 +133,6 @@ async def read_webhook(
                 case "help":
                     await handleHelp(ctx, tg)
     except Exception:
-        logger.exception("Failed to handle update")
+        logger.exception("Failed to handle update %s", update.update_id)
 
     return {"ok": True}
-
-
-@app.get("/items/{item_id}")
-def read_item(item_id: int, q: Union[str, None] = None):
-    return {"item_id": item_id, "q": q}

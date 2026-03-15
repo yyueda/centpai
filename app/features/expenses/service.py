@@ -1,4 +1,5 @@
 from decimal import ROUND_DOWN, ROUND_HALF_UP, Decimal
+import logging
 
 from fastapi import Depends
 from app.core.errors import DomainError
@@ -23,6 +24,8 @@ from app.features.expenses.repo import ExpensesRepository, get_repo
 from sqlalchemy.exc import IntegrityError
 
 
+logger = logging.getLogger("centpai")
+
 def get_service(repo: "ExpensesRepository" = Depends(get_repo)) -> "ExpensesService":
     return ExpensesService(repo)
 
@@ -43,6 +46,7 @@ class ExpensesService:
             await self._ensure_member_and_balance(tg_chat_id, tg_user_id, **user_fields)
         except IntegrityError as e:
             await self.repo.db.rollback()
+            logger.error("DB integrity error: %s", e)
             raise ServerError() from e
         else:
             await self.repo.db.commit()
@@ -66,6 +70,7 @@ class ExpensesService:
             await self.repo.remove_member(chat.id, tg_user_id)
         except IntegrityError as e:
             await self.repo.db.rollback()
+            logger.error("DB integrity error: %s", e)
             raise ServerError() from e
         except DomainError:
             await self.repo.db.rollback()
@@ -124,6 +129,7 @@ class ExpensesService:
             updated_balances = await self.repo.update_balances(chat.id, deltas)
         except IntegrityError as e:
             await self.repo.db.rollback()
+            logger.error("DB integrity error: %s", e)
             raise ServerError() from e
         except DomainError:
             await self.repo.db.rollback()
@@ -180,6 +186,7 @@ class ExpensesService:
 
         except IntegrityError as e:
             await self.repo.db.rollback()
+            logger.error("DB integrity error: %s", e)
             raise ServerError() from e
         except DomainError:
             await self.repo.db.rollback()
@@ -245,6 +252,7 @@ class ExpensesService:
             await self.repo.remove_expense(expense)
         except IntegrityError as e:
             await self.repo.db.rollback()
+            logger.error("DB integrity error: %s", e)
             raise ServerError() from e
         except DomainError:
             await self.repo.db.rollback()
@@ -331,6 +339,7 @@ class ExpensesService:
 
         except IntegrityError as e:
             await self.repo.db.rollback()
+            logger.error("DB integrity error: %s", e)
             raise ServerError() from e
         except DomainError:
             await self.repo.db.rollback()
