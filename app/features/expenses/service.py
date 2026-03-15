@@ -23,8 +23,8 @@ from app.features.expenses.errors import (
 from app.features.expenses.repo import ExpensesRepository, get_repo
 from sqlalchemy.exc import IntegrityError
 
-
 logger = logging.getLogger("centpai")
+
 
 def get_service(repo: "ExpensesRepository" = Depends(get_repo)) -> "ExpensesService":
     return ExpensesService(repo)
