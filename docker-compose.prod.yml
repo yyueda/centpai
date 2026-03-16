@@ -1,34 +1,73 @@
-# Supply env variables in CI/CD
 services:
   fastapi:
-    environment:
-      BOT_TOKEN: ${BOT_TOKEN}
-      DATABASE_URL: ${DATABASE_URL}
-      WEBHOOK_URL: ${WEBHOOK_URL}
     build: .
     ports:
-      - "8000:80"
+      - "80:80"
     env_file:
       - .env
+    command: uvicorn app.main:app --host 0.0.0.0 --port 80 -- workers 4
     depends_on:
       db:
         condition: service_healthy
-  db:
-    image: postgres:17
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: centpai_db
+    networks:
+      - backend
+  alloy:
+    image: grafana/alloy:v1.7.5
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - ./config.alloy:/etc/alloy/config.alloy
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: run --server.http.listen-addr=0.0.0.0:12345 --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy
+    restart: unless-stopped
+    depends_on:
+      - loki
+    networks:
+      - loki
+  loki:
+    image: grafana/loki:3.4.2
+    volumes:
+      - ./loki-config.yaml:/etc/loki/local-config.yaml
+      - lokidata:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    restart: unless-stopped
+    networks:
+      - loki
+  grafana:
+    image: grafana/grafana:11.6.0
+    depends_on:
+      - loki
+    environment:
+      - GF_FEATURE_TOGGLES_ENABLE=grafanaManagedRecordingRules
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+      - GF_AUTH_BASIC_ENABLED=true
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
     ports:
-      - "5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d centpai_db"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
+      - 3000:3000/tcp
+    entrypoint:
+       - sh
+       - -euc
+       - |
+         mkdir -p /etc/grafana/provisioning/datasources
+         cat <<EOF > /etc/grafana/provisioning/datasources/ds.yaml
+         apiVersion: 1
+         datasources:
+         - name: Loki
+           type: loki
+           access: proxy
+           orgId: 1
+           url: 'http://loki:3100'
+           basicAuth: false
+           isDefault: true
+           version: 1
+           editable: false
+         EOF
+         /run.sh
+    networks:
+      - loki
 
-# For persistence
 volumes:
-  pgdata:
+  lokidata:
+
+networks:
+  loki:
+  backend:

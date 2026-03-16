@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import Union
 from fastapi import Depends, FastAPI, Request
+from app.core.middleware import RateLimiterMiddleware
 from app.features.expenses.repo import ExpensesRepository, get_repo
 from app.features.expenses.service import ExpensesService, get_service
 from app.features.telegram.commands.admin import handleHelp, handleInit
@@ -27,7 +28,7 @@ from app.core.config import settings
 from app.db.database import init_reset_db_dev
 
 setup_logging()
-logger = logging.getLogger("webhook")
+logger = logging.getLogger("centpai")
 
 
 @asynccontextmanager
@@ -48,11 +49,12 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+app.add_middleware(RateLimiterMiddleware)
 
 
-@app.get("/")
+@app.get("/health")
 def read_root():
-    return {"Hello": "World"}
+    return {"status": "ok"}
 
 
 @app.post("/webhook")
@@ -132,11 +134,6 @@ async def read_webhook(
                 case "help":
                     await handleHelp(ctx, tg)
     except Exception:
-        logger.exception("Failed to handle update")
+        logger.exception("Failed to handle update %s", update.update_id)
 
     return {"ok": True}
-
-
-@app.get("/items/{item_id}")
-def read_item(item_id: int, q: Union[str, None] = None):
-    return {"item_id": item_id, "q": q}
