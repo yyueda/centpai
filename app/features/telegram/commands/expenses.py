@@ -23,17 +23,14 @@ async def handleAddExpense(
     try:
         len_mentioned_usernames = len(mentioned_usernames)
         amount = parse_amount(args[0])
-        print(f"amount is {amount}")
         desc = " ".join(
             args[1 : len(args) - len_mentioned_usernames]
         )  # rest becomes description
-        print(f"desc is {desc}")
 
         if len_mentioned_usernames > 0:
             usernameToAmount = check_split_rule(
                 args[len(args) - len_mentioned_usernames :], amount, ctx.username
             )
-            print(usernameToAmount)
             updated_balances = await svc.add_expense_selected_users(
                 ctx.tg_chat_id, ctx.tg_user_id, amount, desc, usernameToAmount
             )
@@ -97,9 +94,7 @@ def parse_user(user: str) -> str:
 def check_split_rule(
     username_amounts: list[str], amount: Decimal, request_username: str
 ) -> dict[str, Decimal]:
-    print(f"username_amounts is {username_amounts}")
     username_amount_split = username_amounts[0].split("=")
-    print(f"username split is {username_amount_split}")
     if len(username_amount_split) == 1:
         # equal split among selected users
         equal_amount = Decimal(amount / (len(username_amounts) + 1)).quantize(
@@ -192,7 +187,6 @@ def amount_split(
     usernameToAmount: dict[str, Decimal] = {}
     for username_amount in username_amounts:
         username_amount_split = username_amount.split("=")
-        print(f"amount_split, username split is {username_amount_split}")
         if len(username_amount_split) != 2 or username_amount_split[1] == "":
             raise ValueError(
                 "Invalid amount split format. Usage: /expense_add <amount> <desc> @username1=6 @my_username=4."
