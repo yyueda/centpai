@@ -51,18 +51,14 @@ class TestCheckSplitRule:
         }
 
     def test_routes_to_percentage_split(self):
-        result = check_split_rule(
-            ["@bob=60%", "@alice=40%"], Decimal("100"), "alice"
-        )
+        result = check_split_rule(["@bob=60%", "@alice=40%"], Decimal("100"), "alice")
         assert result == {
             "bob": Decimal("60.00"),
             "alice": Decimal("40.00"),
         }
 
     def test_routes_to_amount_split(self):
-        result = check_split_rule(
-            ["@bob=6", "@alice=4"], Decimal("10"), "alice"
-        )
+        result = check_split_rule(["@bob=6", "@alice=4"], Decimal("10"), "alice")
         assert result == {
             "bob": Decimal("6.00"),
             "alice": Decimal("4.00"),
@@ -80,52 +76,45 @@ class TestEqualSplitSelectedUsers:
             "carol": Decimal("10.00"),
             "alice": Decimal("10.00"),
         }
-    
-    @pytest.mark.parametrize("inputs", [
-        ["@bob=", "@carol"],
-        ["@bob", "@carol="],
-        ["@bob=10", "@carol=10"]
-    ])
+
+    @pytest.mark.parametrize(
+        "inputs", [["@bob=", "@carol"], ["@bob", "@carol="], ["@bob=10", "@carol=10"]]
+    )
     def test_raises_on_bad_format(self, inputs):
         with pytest.raises(ValueError, match="Invalid equal split format"):
             equal_split_selected_users(inputs, Decimal("10.00"), "alice")
 
     def test_raises_if_requester_included(self):
-        with pytest.raises(ValueError, match="do not need to include your own username"):
-            equal_split_selected_users(
-                ["@bob", "@alice"], Decimal("10.00"), "alice"
-            )
+        with pytest.raises(
+            ValueError, match="do not need to include your own username"
+        ):
+            equal_split_selected_users(["@bob", "@alice"], Decimal("10.00"), "alice")
 
 
 class TestPercentageSplit:
 
     def test_percentage_split_success(self):
-        result = percentage_split(
-            ["@bob=60%", "@alice=40%"], Decimal("100"), "alice"
-        )
+        result = percentage_split(["@bob=60%", "@alice=40%"], Decimal("100"), "alice")
         assert result == {
             "bob": Decimal("60.00"),
             "alice": Decimal("40.00"),
         }
-    
-    @pytest.mark.parametrize("inputs", [
-        ["@bob=60", "@alice=40%"],
-        ["@bob=60%", "@alice=40"],
-        ["@bob=", "@alice=40%"]
-    ])
+
+    @pytest.mark.parametrize(
+        "inputs",
+        [["@bob=60", "@alice=40%"], ["@bob=60%", "@alice=40"], ["@bob=", "@alice=40%"]],
+    )
     def test_raises_on_bad_format(self, inputs):
         with pytest.raises(ValueError, match="Invalid percentage split format"):
             percentage_split(inputs, Decimal("100"), "alice")
-        
+
     def test_raises_on_invalid_value(self):
         with pytest.raises(ValueError, match="Invalid value"):
             percentage_split(["@bob=abc%", "@alice=40%"], Decimal("100"), "alice")
 
     def test_raises_if_percentages_not_100(self):
         with pytest.raises(ValueError, match="Invalid percentage splits"):
-            percentage_split(
-                ["@bob=50%", "@alice=40%"], Decimal("100"), "alice"
-            )
+            percentage_split(["@bob=50%", "@alice=40%"], Decimal("100"), "alice")
 
     def test_raises_if_requester_not_included(self):
         with pytest.raises(ValueError, match="need to include your own username"):
@@ -135,24 +124,25 @@ class TestPercentageSplit:
 class TestAmountSplit:
 
     def test_amount_split_success(self):
-        result = amount_split(
-            ["@bob=6", "@alice=4"], Decimal("10"), "alice"
-        )
+        result = amount_split(["@bob=6", "@alice=4"], Decimal("10"), "alice")
         assert result == {
             "bob": Decimal("6.00"),
             "alice": Decimal("4.00"),
         }
 
-    @pytest.mark.parametrize("inputs", [
-        ["@bob=", "@alice=4"],
-        ["@bob=6", "@alice="],
-        ["@bob", "@alice=4"],
-        ["@bob=6", "@alice"]
-    ])
+    @pytest.mark.parametrize(
+        "inputs",
+        [
+            ["@bob=", "@alice=4"],
+            ["@bob=6", "@alice="],
+            ["@bob", "@alice=4"],
+            ["@bob=6", "@alice"],
+        ],
+    )
     def test_raises_on_bad_format(self, inputs):
         with pytest.raises(ValueError, match="Invalid amount split format"):
             amount_split(inputs, Decimal("10"), "alice")
-    
+
     def test_raises_on_invalid_value(self):
         with pytest.raises(ValueError, match="Invalid value"):
             amount_split(["@bob=6%", "@alice=4"], Decimal("10"), "alice")

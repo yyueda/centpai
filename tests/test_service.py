@@ -161,7 +161,7 @@ class TestExpenses:
             BalanceDTO(username="alice", balance=Decimal("5")),
             BalanceDTO(username="bob", balance=Decimal("-5")),
         ]
-    
+
     async def test_add_expense_selected_users_success(
         self, service: ExpensesService, mock_repo: Mock, mocker: MockerFixture
     ) -> None:
@@ -184,7 +184,9 @@ class TestExpenses:
 
         amount = Decimal("10.00")
         username_to_amount = {"alice": Decimal("6.00"), "bob": Decimal("4.00")}
-        result = await service.add_expense_selected_users(10, 1, amount, "lunch", username_to_amount)
+        result = await service.add_expense_selected_users(
+            10, 1, amount, "lunch", username_to_amount
+        )
 
         mock_repo.db.begin.assert_called_once()
         mock_repo.create_expense.assert_called_once_with(
@@ -223,7 +225,7 @@ class TestExpenses:
 
         mock_repo.db.rollback.assert_called_once()
         mock_repo.db.commit.assert_not_called()
-    
+
     @pytest.mark.parametrize(
         "user, chat, is_member, get_user_by_username, expected_error",
         [
@@ -231,7 +233,7 @@ class TestExpenses:
             (Mock(), None, True, Mock(id=10), ChatNotFound),
             (Mock(), Mock(), False, Mock(id=10), NotMember),
             (Mock(), Mock(), True, [Mock(id=10), None], UserNotRegistered),
-            (Mock(), Mock(), [True, True, False], Mock(id=10), NotMember)
+            (Mock(), Mock(), [True, True, False], Mock(id=10), NotMember),
         ],
     )
     async def test_add_expense_selected_users_validation_errors(
@@ -250,7 +252,7 @@ class TestExpenses:
             mock_repo.is_member.side_effect = is_member
         else:
             mock_repo.is_member.return_value = is_member
-        
+
         if isinstance(get_user_by_username, list):
             mock_repo.get_user_by_username.side_effect = get_user_by_username
         else:
@@ -258,11 +260,12 @@ class TestExpenses:
 
         with pytest.raises(expected_error):
             username_to_amount = {"alice": Decimal("6.00"), "bob": Decimal("4.00")}
-            await service.add_expense_selected_users(10, 1, Decimal("10.00"), "lunch", username_to_amount)
+            await service.add_expense_selected_users(
+                10, 1, Decimal("10.00"), "lunch", username_to_amount
+            )
 
         mock_repo.db.rollback.assert_called_once()
         mock_repo.db.commit.assert_not_called()
-
 
     async def test_add_expense_integrity_error_raises_server_error(
         self, service: ExpensesService, mock_repo: Mock, mocker: MockerFixture
