@@ -366,8 +366,7 @@ class ExpensesService:
         base = (amount / n).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
         remainder_cents = int((amount - base * n) * 100)
         return [
-            base + Decimal("0.01") if i < remainder_cents else base
-            for i in range(n)
+            base + Decimal("0.01") if i < remainder_cents else base for i in range(n)
         ]
 
     @staticmethod
