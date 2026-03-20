@@ -69,4 +69,6 @@ async def _send_welcome_message(chat_id: int, messenger: Messenger):
         ]
     }
 
-    await messenger.send_message(chat_id=chat_id, text=text, reply_markup=keyboard, parse_mode="HTML")
+    await messenger.send_message(
+        chat_id=chat_id, text=text, reply_markup=keyboard, parse_mode="HTML"
+    )

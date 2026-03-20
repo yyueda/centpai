@@ -17,7 +17,6 @@ async def handleAddExpense(
             ctx.tg_chat_id,
             "Usage: /expense_add <amount> <desc>",
             reply_to_message_id=ctx.message_id,
-            
         )
         return
 
@@ -46,9 +45,13 @@ async def handleAddExpense(
             if b.balance == 0:
                 continue
             if b.balance < 0:
-                lines.append(f"• <b>{b.username}</b> owes <code>${-b.balance}</code> in total")
+                lines.append(
+                    f"• <b>{b.username}</b> owes <code>${-b.balance}</code> in total"
+                )
             else:
-                lines.append(f"• <b>{b.username}</b> is owed <code>${b.balance}</code> in total")
+                lines.append(
+                    f"• <b>{b.username}</b> is owed <code>${b.balance}</code> in total"
+                )
 
         await messenger.send_message(
             chat_id=ctx.tg_chat_id,
@@ -245,9 +248,13 @@ async def handleListExpenses(
                 if balance.balance == 0:
                     continue
                 if balance.balance < 0:
-                    balance_lines.append(f"• <b>{balance.username}</b> <code>-${-balance.balance}</code>")
+                    balance_lines.append(
+                        f"• <b>{balance.username}</b> <code>-${-balance.balance}</code>"
+                    )
                 else:
-                    balance_lines.append(f"• <b>{balance.username}</b> <code>+${balance.balance}</code>")
+                    balance_lines.append(
+                        f"• <b>{balance.username}</b> <code>+${balance.balance}</code>"
+                    )
 
             message_lines.append("\n".join(balance_lines))
 
@@ -293,9 +300,9 @@ async def handleRemoveExpense(
         )
     except ValueError as e:
         await messenger.send_message(
-            chat_id=ctx.tg_chat_id, 
-            text=f"❌ {str(e)}", 
-            reply_to_message_id=ctx.message_id
+            chat_id=ctx.tg_chat_id,
+            text=f"❌ {str(e)}",
+            reply_to_message_id=ctx.message_id,
         )
     except DomainError as e:
         await messenger.send_message(
@@ -328,9 +335,9 @@ async def handlePay(
         )
     except ValueError as e:
         await messenger.send_message(
-            chat_id=ctx.tg_chat_id, 
-            text=f"❌ {str(e)}", 
-            reply_to_message_id=ctx.message_id
+            chat_id=ctx.tg_chat_id,
+            text=f"❌ {str(e)}",
+            reply_to_message_id=ctx.message_id,
         )
     except DomainError as e:
         await messenger.send_message(
@@ -356,7 +363,9 @@ async def handleDebts(
 
         lines = [f"<b>Debts:</b>\n"]
         for d in simplified_debts:
-            lines.append(f"• <b>{d.from_user}</b> ---> <b>{d.to_user}</b> <code>${d.amount}</code>")
+            lines.append(
+                f"• <b>{d.from_user}</b> ---> <b>{d.to_user}</b> <code>${d.amount}</code>"
+            )
 
         await messenger.send_message(
             chat_id=ctx.tg_chat_id,
