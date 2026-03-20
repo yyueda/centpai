@@ -209,4 +209,10 @@ __marimo__/
 # SQlite
 *.db
 
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+
 .vscode
