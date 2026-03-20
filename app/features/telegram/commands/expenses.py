@@ -40,24 +40,29 @@ async def handleAddExpense(
                 ctx.tg_chat_id, ctx.tg_user_id, amount, desc
             )
 
-        lines = [f"Expense added.\n\nBalances:"]
+        lines = [f"✅ <b>Expense added.</b>\n\n<b>Balances:</b>"]
         for b in updated_balances:
             if b.balance == 0:
                 continue
             if b.balance < 0:
-                lines.append(f"• {b.username} owes {-b.balance} in total")
+                lines.append(
+                    f"• <b>{b.username}</b> owes <code>${-b.balance}</code> in total"
+                )
             else:
-                lines.append(f"• {b.username} is owed {b.balance} in total")
+                lines.append(
+                    f"• <b>{b.username}</b> is owed <code>${b.balance}</code> in total"
+                )
 
         await messenger.send_message(
             chat_id=ctx.tg_chat_id,
             text="\n".join(lines),
             reply_to_message_id=ctx.message_id,
+            parse_mode="HTML",
         )
     except ValueError as e:
         await messenger.send_message(
             ctx.tg_chat_id,
-            str(e),
+            "❌ " + str(e),
             ctx.message_id,
         )
     except DomainError as e:
@@ -225,27 +230,31 @@ async def handleListExpenses(
         expenses = await svc.get_expenses(ctx.tg_chat_id)
         balances = await svc.get_balances(ctx.tg_chat_id)
         if expenses:
-            message_lines = ["Recent Expenses"]
+            message_lines = ["<b>Recent Expenses</b>"]
             for exp in expenses:
                 participants = exp.participants
                 lines = [
-                    f"[#{exp.id}] {exp.desc} — ${exp.amount} by {exp.paid_by} ({exp.created_at.strftime('%Y-%m-%d')})"
+                    f"[<code>#{exp.id}]</code> {exp.desc} — <code>${exp.amount}</code> by {exp.paid_by} <i>({exp.created_at.strftime('%Y-%m-%d')})</i>"
                 ]
                 if participants:
                     for participant in participants:
                         lines.append(
-                            f"  └ {participant.username} owes ${participant.amount_owed}"
+                            f"  └ {participant.username} owes <code>${participant.amount_owed}</code>"
                         )
                 message_lines.append("\n".join(lines))
 
-            balance_lines = ["Balances"]
+            balance_lines = ["<b>Balances:</b>"]
             for balance in balances:
                 if balance.balance == 0:
                     continue
                 if balance.balance < 0:
-                    balance_lines.append(f"{balance.username} -${-balance.balance}")
+                    balance_lines.append(
+                        f"• <b>{balance.username}</b> <code>-${-balance.balance}</code>"
+                    )
                 else:
-                    balance_lines.append(f"{balance.username} +${balance.balance}")
+                    balance_lines.append(
+                        f"• <b>{balance.username}</b> <code>+${balance.balance}</code>"
+                    )
 
             message_lines.append("\n".join(balance_lines))
 
@@ -253,6 +262,7 @@ async def handleListExpenses(
                 chat_id=ctx.tg_chat_id,
                 text="\n\n".join(message_lines),
                 reply_to_message_id=ctx.message_id,
+                parse_mode="HTML",
             )
         else:
             await messenger.send_message(
@@ -263,7 +273,7 @@ async def handleListExpenses(
     except DomainError as e:
         await messenger.send_message(
             chat_id=ctx.tg_chat_id,
-            text=f"{e.message}",
+            text=f"❌ {e.message}",
             reply_to_message_id=ctx.message_id,
         )
 
@@ -285,17 +295,19 @@ async def handleRemoveExpense(
 
         await messenger.send_message(
             chat_id=ctx.tg_chat_id,
-            text=f"Expense ({expense_id}) removed.",
+            text=f"Expense <code>#{expense_id}</code> removed.",
             reply_to_message_id=ctx.message_id,
         )
     except ValueError as e:
         await messenger.send_message(
-            chat_id=ctx.tg_chat_id, text=str(e), reply_to_message_id=ctx.message_id
+            chat_id=ctx.tg_chat_id,
+            text=f"❌ {str(e)}",
+            reply_to_message_id=ctx.message_id,
         )
     except DomainError as e:
         await messenger.send_message(
             chat_id=ctx.tg_chat_id,
-            text=f"{e.message}",
+            text=f"❌ {e.message}",
             reply_to_message_id=ctx.message_id,
         )
 
@@ -318,17 +330,19 @@ async def handlePay(
 
         await messenger.send_message(
             chat_id=ctx.tg_chat_id,
-            text=f"{amount} has been paid to {username}.",
+            text=f"✅ <code>${amount}</code> paid to <b>{username}</b>.",
             reply_to_message_id=ctx.message_id,
         )
     except ValueError as e:
         await messenger.send_message(
-            chat_id=ctx.tg_chat_id, text=str(e), reply_to_message_id=ctx.message_id
+            chat_id=ctx.tg_chat_id,
+            text=f"❌ {str(e)}",
+            reply_to_message_id=ctx.message_id,
         )
     except DomainError as e:
         await messenger.send_message(
             chat_id=ctx.tg_chat_id,
-            text=f"{e.message}",
+            text=f"❌ {e.message}",
             reply_to_message_id=ctx.message_id,
         )
 
@@ -339,18 +353,30 @@ async def handleDebts(
     try:
         simplified_debts = await svc.get_simplified_debts(ctx.tg_chat_id)
 
-        lines = [f"Simplified Debts:"]
+        if not simplified_debts:
+            await messenger.send_message(
+                chat_id=ctx.tg_chat_id,
+                text="No debts.",
+                reply_to_message_id=ctx.message_id,
+            )
+            return
+
+        lines = [f"<b>Debts:</b>\n"]
         for d in simplified_debts:
-            lines.append(f"• {d.from_user} -> {d.to_user} ${d.amount}")
+            lines.append(
+                f"• <b>{d.from_user}</b> ---> <b>{d.to_user}</b> <code>${d.amount}</code>"
+            )
 
         await messenger.send_message(
             chat_id=ctx.tg_chat_id,
             text="\n".join(lines),
             reply_to_message_id=ctx.message_id,
+            parse_mode="HTML",
         )
     except DomainError as e:
         await messenger.send_message(
             chat_id=ctx.tg_chat_id,
-            text=f"{e.message}",
+            text=f"❌ {e.message}",
             reply_to_message_id=ctx.message_id,
+            parse_mode="HTML",
         )

@@ -18,14 +18,16 @@ async def handleJoin(
         )
         await messenger.send_message(
             chat_id=ctx.tg_chat_id,
-            text=f"{ctx.username} joined.",
+            text=f"✅ <b>{ctx.username}</b> joined.",
             reply_to_message_id=ctx.message_id,
+            parse_mode="HTML",
         )
     except DomainError as e:
         await messenger.send_message(
             chat_id=ctx.tg_chat_id,
-            text=f"{e.message}",
+            text=f"❌ {e.message}",
             reply_to_message_id=ctx.message_id,
+            parse_mode="HTML",
         )
 
 
@@ -38,9 +40,10 @@ async def handleListMembers(
         if members:
             await messenger.send_message(
                 chat_id=ctx.tg_chat_id,
-                text="Current members:\n"
-                + "\n".join(f"• {member}" for member in members),
+                text="<b>Current members:</b>\n"
+                + "\n".join(f"• <b>{member}</b>" for member in members),
                 reply_to_message_id=ctx.message_id,
+                parse_mode="HTML",
             )
         else:
             await messenger.send_message(
@@ -51,8 +54,9 @@ async def handleListMembers(
     except DomainError as e:
         await messenger.send_message(
             chat_id=ctx.tg_chat_id,
-            text=f"{e.message}",
+            text=f"❌ {e.message}",
             reply_to_message_id=ctx.message_id,
+            parse_mode="HTML",
         )
 
 
@@ -63,12 +67,14 @@ async def handleLeave(
         await svc.remove_member(ctx.tg_chat_id, ctx.tg_user_id)
         await messenger.send_message(
             chat_id=ctx.tg_chat_id,
-            text=f"{ctx.username} left.",
+            text=f"<b>{ctx.username}</b> left.",
             reply_to_message_id=ctx.message_id,
+            parse_mode="HTML",
         )
     except DomainError as e:
         await messenger.send_message(
             chat_id=ctx.tg_chat_id,
-            text=f"{e.message}",
+            text=f"❌ {e.message}",
             reply_to_message_id=ctx.message_id,
+            parse_mode="HTML",
         )

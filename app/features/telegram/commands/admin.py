@@ -3,38 +3,37 @@ from app.features.telegram.client import Messenger
 from app.features.telegram.context import TgContext
 
 COMMANDS_TEXT = (
-    "📋 Commands\n"
-    "────────────────────\n\n"
-    "👥 Administrative\n"
+    "📋 <b>Commands</b>\n\n"
+    "👥 <b>Administrative</b>\n"
     "/help — show this help message\n"
     "/join — register yourself in this group\n"
     "/leave — leave the current group\n"
     "/members — list members in this chat\n"
     "/add @user — add a member\n"
     "/remove @user — remove a member\n"
-    "/home — view group status and net balances\n\n"
-    "💰 Expenses\n"
+    "💰 <b>Expenses</b>\n"
     "/expense_view — view all expenses breakdown\n"
-    "/expense_add <Category> <Amount> [split rule] — add an expense\n"
-    "  Example: /expense_add Dinner 48.50\n\n"
-    "/expense_remove <Expense ID> — remove an expense by ID\n\n"
-    "/pay @user <amount> — record a payment you made to a user\n"
-    "  Example: /pay @John 25\n\n"
-    "🔀 Split Rules (optional)\n"
+    "/expense_add <code>&lt;Category&gt; &lt;Amount&gt; [split rule]</code> — add an expense\n"
+    "<i>Example:</i> <code>/expense_add Dinner 48.50</code>\n\n"
+    "/expense_remove <code>&lt;Expense ID&gt;</code> — remove an expense by ID\n\n"
+    "/pay <code>@user &lt;amount&gt;</code> — record a payment you made to a user\n"
+    "<i>Example:</i> <code>/pay @John 25</code>\n\n"
+    "/debts — show simplified debts (who owes whom and how much)\n\n"
+    "🔀 <b>Split Rules</b> <i>(optional)</i>\n"
     "If omitted, expense is split equally among everyone.\n\n"
-    "• Equal split (default):\n"
-    "  /expense_add Dinner 48.50\n\n"
-    "• Equal split among selected users:\n"
-    "  @John @Ben @Calvin @Dylan\n\n"
-    "• Exact amounts (Include your own username):\n"
-    "  @John=10 @Ben=20 @Dylan=18.5\n\n"
-    "• Percentages (Include your own username):\n"
-    "  @John=50% @Ben=50%\n\n"
+    "• <b>Equal split</b> (default):\n"
+    "<code>/expense_add Dinner 48.50</code>\n\n"
+    "• <b>Equal split among selected users:</b>\n"
+    "<code>@John @Ben @Calvin @Dylan</code>\n\n"
+    "• <b>Exact amounts</b> (include your own username):\n"
+    "<code>@John=10 @Ben=20 @Dylan=18.5</code>\n\n"
+    "• <b>Percentages</b> (include your own username):\n"
+    "<code>@John=50% @Ben=50%</code>\n\n"
 )
 
 
 async def handleHelp(ctx: TgContext, messenger: Messenger) -> None:
-    await messenger.send_message(ctx.tg_chat_id, COMMANDS_TEXT)
+    await messenger.send_message(ctx.tg_chat_id, COMMANDS_TEXT, parse_mode="HTML")
 
 
 async def handleInit(
@@ -52,7 +51,7 @@ async def handleInit(
 
 async def _send_welcome_message(chat_id: int, messenger: Messenger):
     text = (
-        "Welcome to Centpai!\n\n"
+        "<b>Welcome to Centpai!</b>\n\n"
         "Tap a button below or enter a command to get started:\n\n" + COMMANDS_TEXT
     )
 
@@ -70,4 +69,6 @@ async def _send_welcome_message(chat_id: int, messenger: Messenger):
         ]
     }
 
-    await messenger.send_message(chat_id=chat_id, text=text, reply_markup=keyboard)
+    await messenger.send_message(
+        chat_id=chat_id, text=text, reply_markup=keyboard, parse_mode="HTML"
+    )
