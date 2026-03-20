@@ -1,5 +1,6 @@
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from app.core.errors import DomainError
+from app.features.expenses.dto import SplitRule
 from app.features.expenses.service import ExpensesService
 from app.features.telegram.client import Messenger
 from app.features.telegram.context import TgContext
@@ -28,11 +29,16 @@ async def handleAddExpense(
         )  # rest becomes description
 
         if len_mentioned_usernames > 0:
-            usernameToAmount = check_split_rule(
-                args[len(args) - len_mentioned_usernames :], amount, ctx.username
-            )
+            username_amounts = args[len(args) - len_mentioned_usernames :]
+            split_rule = check_split_rule(username_amounts)
             updated_balances = await svc.add_expense_selected_users(
-                ctx.tg_chat_id, ctx.tg_user_id, amount, desc, usernameToAmount
+                ctx.tg_chat_id,
+                ctx.tg_user_id,
+                amount,
+                desc,
+                username_amounts,
+                split_rule,
+                ctx.username,
             )
 
         else:
@@ -96,131 +102,14 @@ def parse_user(user: str) -> str:
     return user_split[1]
 
 
-def check_split_rule(
-    username_amounts: list[str], amount: Decimal, request_username: str
-) -> dict[str, Decimal]:
-    username_amount_split = username_amounts[0].split("=")
-    if len(username_amount_split) == 1:
-        # equal split among selected users
-        equal_amount = Decimal(amount / (len(username_amounts) + 1)).quantize(
-            Decimal("0.01"), rounding=ROUND_HALF_UP
-        )
-        return equal_split_selected_users(
-            username_amounts, equal_amount, request_username
-        )
-    elif len(username_amount_split) == 2 and ("%" in username_amount_split[1]):
-        # percentage
-        return percentage_split(username_amounts, amount, request_username)
+def check_split_rule(username_amounts: list[str]) -> SplitRule:
+    first_split = username_amounts[0].split("=")
+    if len(first_split) == 1:
+        return SplitRule.EQUAL_SELECTED
+    elif len(first_split) == 2 and "%" in first_split[1]:
+        return SplitRule.PERCENTAGE
     else:
-        # amounts
-        return amount_split(username_amounts, amount, request_username)
-
-
-def equal_split_selected_users(
-    username_amounts: list[str], split_amount: Decimal, request_username: str
-) -> dict[str, Decimal]:
-
-    isRequestUsernameInside = False
-    usernameToAmount: dict[str, Decimal] = {}
-    for username_amount in username_amounts:
-        username_amount_split = username_amount.split("=")
-        if len(username_amount_split) > 1:
-            raise ValueError(
-                "Invalid equal split format. Usage: /expense_add <amount> <desc> @username1 @username2."
-            )
-        username = username_amount_split[0].lstrip("@")
-        usernameToAmount[username] = split_amount
-        if username == request_username:
-            isRequestUsernameInside = True
-
-    if isRequestUsernameInside:
-        raise ValueError(
-            "You do not need to include your own username. Usage: /expense_add <amount> <desc> @username1 @username2."
-        )
-
-    usernameToAmount[request_username] = split_amount
-
-    return usernameToAmount
-
-
-def percentage_split(
-    username_amounts: list[str], amount: Decimal, request_username: str
-) -> dict[str, Decimal]:
-
-    isRequestUsernameInside = False
-    total_percentage = 0
-    usernameToAmount: dict[str, Decimal] = {}
-    for username_amount in username_amounts:
-        username_amount_split = username_amount.split("=")
-        if len(username_amount_split) != 2 or ("%" not in username_amount_split[1]):
-            raise ValueError(
-                "Invalid percentage split format. Usage: /expense_add <amount> <desc> @username1=60% @my_username=40%."
-            )
-        try:
-            percentage = float(username_amount_split[1].rstrip("%"))
-            total_percentage += percentage
-            percentage_amount = Decimal(
-                amount * (Decimal(percentage) / Decimal(100))
-            ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-            username = username_amount_split[0].lstrip("@")
-            usernameToAmount[username] = percentage_amount
-            if request_username == username:
-                isRequestUsernameInside = True
-        except (ValueError, InvalidOperation):
-            raise ValueError(
-                "Invalid value. Usage: /expense_add <amount> <desc> @username1=60% @my_username=40%."
-            )
-
-    if total_percentage != 100:
-        raise ValueError(
-            "Invalid percentage splits. Usage: /expense_add <amount> <desc> @username1=60% @my_username=40%."
-        )
-
-    if not isRequestUsernameInside:
-        raise ValueError(
-            "You need to include your own username. Usage: /expense_add <amount> <desc> @username1=60% @my_username=40%."
-        )
-
-    return usernameToAmount
-
-
-def amount_split(
-    username_amounts: list[str], amount: Decimal, request_username: str
-) -> dict[str, Decimal]:
-    isRequestUsernameInside = False
-    total_amount = 0
-    usernameToAmount: dict[str, Decimal] = {}
-    for username_amount in username_amounts:
-        username_amount_split = username_amount.split("=")
-        if len(username_amount_split) != 2 or username_amount_split[1] == "":
-            raise ValueError(
-                "Invalid amount split format. Usage: /expense_add <amount> <desc> @username1=6 @my_username=4."
-            )
-        try:
-            converted_amount = Decimal(username_amount_split[1]).quantize(
-                Decimal("0.01"), rounding=ROUND_HALF_UP
-            )
-            total_amount += converted_amount
-            username = username_amount_split[0].lstrip("@")
-            usernameToAmount[username] = converted_amount
-            if request_username == username:
-                isRequestUsernameInside = True
-        except (ValueError, InvalidOperation):
-            raise ValueError(
-                "Invalid value. Usage: /expense_add <amount> <desc> @username1=6 @my_username=4."
-            )
-
-    if total_amount != amount:
-        raise ValueError(
-            "Invalid amount splits. Usage: /expense_add <amount> <desc> @username1=6 @my_username=4."
-        )
-
-    if not isRequestUsernameInside:
-        raise ValueError(
-            "You need to include your own username. Usage: /expense_add <amount> <desc> @username1=6 @my_username=4."
-        )
-
-    return usernameToAmount
+        return SplitRule.AMOUNT
 
 
 async def handleListExpenses(

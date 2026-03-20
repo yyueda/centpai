@@ -1,7 +1,14 @@
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
+from enum import StrEnum
 from typing import List
+
+
+class SplitRule(StrEnum):
+    EQUAL_SELECTED = "equal_selected"
+    PERCENTAGE = "percentage"
+    AMOUNT = "amount"
 
 
 @dataclass(frozen=True)
