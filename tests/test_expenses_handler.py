@@ -4,15 +4,17 @@ import pytest
 from unittest.mock import AsyncMock, Mock
 
 from app.core.errors import DomainError
+from app.features.expenses.dto import SplitRule
 from app.features.expenses.errors import NotMember, UserNotRegistered
 from app.features.expenses.service import ExpensesService
 from app.features.telegram.commands.expenses import (
-    amount_split,
     check_split_rule,
-    equal_split_selected_users,
     handleAddExpense,
-    percentage_split,
 )
+
+_equal = ExpensesService._equal_split_selected_users
+_percentage = ExpensesService._percentage_split
+_amount = ExpensesService._amount_split
 
 
 @pytest.fixture
@@ -43,62 +45,66 @@ def svc(mocker):
 class TestCheckSplitRule:
 
     def test_routes_to_equal_split(self):
-        result = check_split_rule(["@bob", "@carol"], Decimal("30"), "alice")
-        assert result == {
-            "bob": Decimal("10.00"),
-            "carol": Decimal("10.00"),
-            "alice": Decimal("10.00"),
-        }
+        result = check_split_rule(["@bob", "@carol"])
+        assert result == SplitRule.EQUAL_SELECTED
 
     def test_routes_to_percentage_split(self):
-        result = check_split_rule(["@bob=60%", "@alice=40%"], Decimal("100"), "alice")
-        assert result == {
-            "bob": Decimal("60.00"),
-            "alice": Decimal("40.00"),
-        }
+        result = check_split_rule(["@bob=60%", "@alice=40%"])
+        assert result == SplitRule.PERCENTAGE
 
     def test_routes_to_amount_split(self):
-        result = check_split_rule(["@bob=6", "@alice=4"], Decimal("10"), "alice")
-        assert result == {
-            "bob": Decimal("6.00"),
-            "alice": Decimal("4.00"),
-        }
+        result = check_split_rule(["@bob=6", "@alice=4"])
+        assert result == SplitRule.AMOUNT
 
 
 class TestEqualSplitSelectedUsers:
 
     def test_equal_split_success(self):
-        result = equal_split_selected_users(
-            ["@bob", "@carol"], Decimal("10.00"), "alice"
-        )
+        # total $30 split 3 ways → $10 each
+        result = _equal(["@bob", "@carol"], Decimal("30.00"), "alice")
         assert result == {
             "bob": Decimal("10.00"),
             "carol": Decimal("10.00"),
             "alice": Decimal("10.00"),
         }
+
+    def test_equal_split_remainder_goes_to_mentioned_users(self):
+        # $10 / 3 = $3.33 base; 1 remainder cent → bob gets $3.34
+        result = _equal(["@bob", "@carol"], Decimal("10.00"), "alice")
+        assert result == {
+            "bob": Decimal("3.34"),
+            "carol": Decimal("3.33"),
+            "alice": Decimal("3.33"),
+        }
+        assert sum(result.values()) == Decimal("10.00")
 
     @pytest.mark.parametrize(
         "inputs", [["@bob=", "@carol"], ["@bob", "@carol="], ["@bob=10", "@carol=10"]]
     )
     def test_raises_on_bad_format(self, inputs):
         with pytest.raises(ValueError, match="Invalid equal split format"):
-            equal_split_selected_users(inputs, Decimal("10.00"), "alice")
+            _equal(inputs, Decimal("10.00"), "alice")
 
     def test_raises_if_requester_included(self):
-        with pytest.raises(
-            ValueError, match="do not need to include your own username"
-        ):
-            equal_split_selected_users(["@bob", "@alice"], Decimal("10.00"), "alice")
+        with pytest.raises(ValueError, match="do not need to include your own username"):
+            _equal(["@bob", "@alice"], Decimal("10.00"), "alice")
 
 
 class TestPercentageSplit:
 
     def test_percentage_split_success(self):
-        result = percentage_split(["@bob=60%", "@alice=40%"], Decimal("100"), "alice")
+        result = _percentage(["@bob=60%", "@alice=40%"], Decimal("100"), "alice")
         assert result == {
             "bob": Decimal("60.00"),
             "alice": Decimal("40.00"),
         }
+
+    def test_percentage_split_remainder_absorbed_by_last_user(self):
+        # 33.33% of $100 = $33.33 each for first two; last gets 100 - 66.66 = 33.34
+        result = _percentage(
+            ["@bob=33.33%", "@carol=33.33%", "@alice=33.34%"], Decimal("100"), "alice"
+        )
+        assert sum(result.values()) == Decimal("100.00")
 
     @pytest.mark.parametrize(
         "inputs",
@@ -106,25 +112,25 @@ class TestPercentageSplit:
     )
     def test_raises_on_bad_format(self, inputs):
         with pytest.raises(ValueError, match="Invalid percentage split format"):
-            percentage_split(inputs, Decimal("100"), "alice")
+            _percentage(inputs, Decimal("100"), "alice")
 
     def test_raises_on_invalid_value(self):
         with pytest.raises(ValueError, match="Invalid value"):
-            percentage_split(["@bob=abc%", "@alice=40%"], Decimal("100"), "alice")
+            _percentage(["@bob=abc%", "@alice=40%"], Decimal("100"), "alice")
 
     def test_raises_if_percentages_not_100(self):
         with pytest.raises(ValueError, match="Invalid percentage splits"):
-            percentage_split(["@bob=50%", "@alice=40%"], Decimal("100"), "alice")
+            _percentage(["@bob=50%", "@alice=40%"], Decimal("100"), "alice")
 
     def test_raises_if_requester_not_included(self):
         with pytest.raises(ValueError, match="need to include your own username"):
-            percentage_split(["@bob=100%"], Decimal("100"), "alice")
+            _percentage(["@bob=100%"], Decimal("100"), "alice")
 
 
 class TestAmountSplit:
 
     def test_amount_split_success(self):
-        result = amount_split(["@bob=6", "@alice=4"], Decimal("10"), "alice")
+        result = _amount(["@bob=6", "@alice=4"], Decimal("10"), "alice")
         assert result == {
             "bob": Decimal("6.00"),
             "alice": Decimal("4.00"),
@@ -141,19 +147,19 @@ class TestAmountSplit:
     )
     def test_raises_on_bad_format(self, inputs):
         with pytest.raises(ValueError, match="Invalid amount split format"):
-            amount_split(inputs, Decimal("10"), "alice")
+            _amount(inputs, Decimal("10"), "alice")
 
     def test_raises_on_invalid_value(self):
         with pytest.raises(ValueError, match="Invalid value"):
-            amount_split(["@bob=6%", "@alice=4"], Decimal("10"), "alice")
+            _amount(["@bob=6%", "@alice=4"], Decimal("10"), "alice")
 
     def test_raises_if_amounts_dont_sum_to_total(self):
         with pytest.raises(ValueError, match="Invalid amount splits"):
-            amount_split(["@bob=5", "@alice=4"], Decimal("10"), "alice")
+            _amount(["@bob=5", "@alice=4"], Decimal("10"), "alice")
 
     def test_raises_if_requester_not_included(self):
         with pytest.raises(ValueError, match="need to include your own username"):
-            amount_split(["@bob=10"], Decimal("10"), "alice")
+            _amount(["@bob=10"], Decimal("10"), "alice")
 
 
 class TestHandleAddExpense:
@@ -252,7 +258,11 @@ class TestHandleAddExpense:
     async def test_value_error_from_split_sends_error_message(
         self, ctx, messenger, svc
     ):
-        # Percentages don't sum to 100 — triggers ValueError in split rule
+        # Percentages don't sum to 100 — service raises ValueError during parsing
+        svc.add_expense_selected_users.side_effect = ValueError(
+            "Invalid percentage splits."
+        )
+
         await handleAddExpense(
             ctx,
             messenger,
@@ -262,4 +272,4 @@ class TestHandleAddExpense:
         )
 
         messenger.send_message.assert_called_once()
-        svc.add_expense_selected_users.assert_not_called()
+        svc.add_expense_selected_users.assert_called_once()

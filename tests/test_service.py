@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, Mock
 from pytest_mock import MockerFixture
 from sqlalchemy.exc import IntegrityError
 from app.core.errors import DomainError
-from app.features.expenses.dto import BalanceDTO
+from app.features.expenses.dto import BalanceDTO, SplitRule
 from app.features.expenses.errors import (
     ChatNotFound,
     ExpenseNotFoundError,
@@ -183,9 +183,9 @@ class TestExpenses:
         mock_repo.update_balances.return_value = [balance1, balance2]
 
         amount = Decimal("10.00")
-        username_to_amount = {"alice": Decimal("6.00"), "bob": Decimal("4.00")}
         result = await service.add_expense_selected_users(
-            10, 1, amount, "lunch", username_to_amount
+            10, 1, amount, "lunch",
+            ["@alice=6.00", "@bob=4.00"], SplitRule.AMOUNT, "alice",
         )
 
         mock_repo.db.begin.assert_called_once()
@@ -259,9 +259,9 @@ class TestExpenses:
             mock_repo.get_user_by_username.return_value = get_user_by_username
 
         with pytest.raises(expected_error):
-            username_to_amount = {"alice": Decimal("6.00"), "bob": Decimal("4.00")}
             await service.add_expense_selected_users(
-                10, 1, Decimal("10.00"), "lunch", username_to_amount
+                10, 1, Decimal("10.00"), "lunch",
+                ["@alice=6.00", "@bob=4.00"], SplitRule.AMOUNT, "alice",
             )
 
         mock_repo.db.rollback.assert_called_once()
@@ -279,6 +279,38 @@ class TestExpenses:
         with pytest.raises(ServerError):
             await service.add_expense(111, 222, Decimal("10.00"), "lunch")
 
+        mock_repo.db.rollback.assert_called_once()
+        mock_repo.db.commit.assert_not_called()
+    
+    async def test_add_expense_selected_users_integrity_error_raises_server_error(
+        self, service: ExpensesService, mock_repo: Mock, mocker: MockerFixture
+    ) -> None:
+        payer = mocker.Mock(id=1)
+        alice_user = mocker.Mock(id=1)
+        bob_user = mocker.Mock(id=2)
+
+        balance1 = mocker.Mock()
+        balance1.user.username = "alice"
+        balance1.balance = Decimal("4")
+        balance2 = mocker.Mock()
+        balance2.user.username = "bob"
+        balance2.balance = Decimal("-4")
+
+        mock_repo.get_user_by_tg_id.return_value = payer
+        mock_repo.get_chat_by_tg_id.return_value = mocker.Mock(id=10)
+        mock_repo.is_member.return_value = True
+        mock_repo.get_user_by_username.side_effect = [alice_user, bob_user]
+        mock_repo.update_balances.return_value = [balance1, balance2]
+
+        amount = Decimal("10.00")
+        mock_repo.create_expense.side_effect = IntegrityError(None, None, Exception())
+
+        with pytest.raises(ServerError):
+            await service.add_expense_selected_users(
+                10, 1, amount, "lunch",
+                ["@alice=6.00", "@bob=4.00"], SplitRule.AMOUNT, "alice",
+            )
+        
         mock_repo.db.rollback.assert_called_once()
         mock_repo.db.commit.assert_not_called()
 
