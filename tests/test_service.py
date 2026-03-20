@@ -184,8 +184,13 @@ class TestExpenses:
 
         amount = Decimal("10.00")
         result = await service.add_expense_selected_users(
-            10, 1, amount, "lunch",
-            ["@alice=6.00", "@bob=4.00"], SplitRule.AMOUNT, "alice",
+            10,
+            1,
+            amount,
+            "lunch",
+            ["@alice=6.00", "@bob=4.00"],
+            SplitRule.AMOUNT,
+            "alice",
         )
 
         mock_repo.db.begin.assert_called_once()
@@ -260,8 +265,13 @@ class TestExpenses:
 
         with pytest.raises(expected_error):
             await service.add_expense_selected_users(
-                10, 1, Decimal("10.00"), "lunch",
-                ["@alice=6.00", "@bob=4.00"], SplitRule.AMOUNT, "alice",
+                10,
+                1,
+                Decimal("10.00"),
+                "lunch",
+                ["@alice=6.00", "@bob=4.00"],
+                SplitRule.AMOUNT,
+                "alice",
             )
 
         mock_repo.db.rollback.assert_called_once()
@@ -281,7 +291,7 @@ class TestExpenses:
 
         mock_repo.db.rollback.assert_called_once()
         mock_repo.db.commit.assert_not_called()
-    
+
     async def test_add_expense_selected_users_integrity_error_raises_server_error(
         self, service: ExpensesService, mock_repo: Mock, mocker: MockerFixture
     ) -> None:
@@ -307,10 +317,15 @@ class TestExpenses:
 
         with pytest.raises(ServerError):
             await service.add_expense_selected_users(
-                10, 1, amount, "lunch",
-                ["@alice=6.00", "@bob=4.00"], SplitRule.AMOUNT, "alice",
+                10,
+                1,
+                amount,
+                "lunch",
+                ["@alice=6.00", "@bob=4.00"],
+                SplitRule.AMOUNT,
+                "alice",
             )
-        
+
         mock_repo.db.rollback.assert_called_once()
         mock_repo.db.commit.assert_not_called()
 

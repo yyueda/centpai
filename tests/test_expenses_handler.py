@@ -86,7 +86,9 @@ class TestEqualSplitSelectedUsers:
             _equal(inputs, Decimal("10.00"), "alice")
 
     def test_raises_if_requester_included(self):
-        with pytest.raises(ValueError, match="do not need to include your own username"):
+        with pytest.raises(
+            ValueError, match="do not need to include your own username"
+        ):
             _equal(["@bob", "@alice"], Decimal("10.00"), "alice")
 
 
