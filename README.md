@@ -50,7 +50,8 @@ Split expenses effortlessly in Telegram with Centpai. Track shared costs, settle
    ```env
    BOT_TOKEN=<your telegram bot token>
    DATABASE_URL=<postgres or sqlite async url>
-   NGROK_URL=<your public webhook url>
+   WEBHOOK_URL=<your public webhook url>
+   WEBHOOK_SECRET=<your webhook secret>
    ```
 
 3. Run with Docker

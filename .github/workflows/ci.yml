@@ -54,7 +54,7 @@ jobs:
           cat > .env << EOF
           BOT_TOKEN=${{ secrets.BOT_TOKEN }}
           DATABASE_URL=${{ secrets.DATABASE_URL }}
-          WEBHOOK_URL=${{ secrets.NGROK_URL }}
+          WEBHOOK_URL=${{ secrets.WEBHOOK_URL }}
           WEBHOOK_SECRET=${{ secrets.WEBHOOK_SECRET }}
           GRAFANA_ADMIN_USER=${{ secrets.GRAFANA_ADMIN_USER }}
           GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD }}
