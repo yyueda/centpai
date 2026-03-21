@@ -41,3 +41,39 @@ jobs:
 
       - name: Run tests
         run: poetry run pytest
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    if: github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate .env file
+        run: |
+          cat > .env << EOF
+          BOT_TOKEN=${{ secrets.BOT_TOKEN }}
+          DATABASE_URL=${{ secrets.DATABASE_URL }}
+          NGROK_URL=${{ secrets.NGROK_URL }}
+          GRAFANA_ADMIN_USER=${{ secrets.GRAFANA_ADMIN_USER }}
+          GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD }}
+          EOF
+
+      - name: Transfer files to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "app,Dockerfile,pyproject.toml,poetry.lock,docker-compose.prod.yml,config.alloy,loki-config.yaml,.env"
+          target: /home/ec2-user/centpai
+
+      - name: Deploy on EC2
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd /home/ec2-user/centpai
+            docker compose -f docker-compose.prod.yml up -d --build
