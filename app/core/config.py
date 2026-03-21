@@ -6,7 +6,8 @@ class Settings(BaseSettings):
 
     BOT_TOKEN: str
     DATABASE_URL: str
-    NGROK_URL: str
+    WEBHOOK_URL: str
+    WEBHOOK_SECRET: str
 
 
 settings = Settings()  # type: ignore

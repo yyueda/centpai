@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI):
     tg = client.TelegramAPI(settings.BOT_TOKEN)
     await tg.setMyCommands(tg.commands)
     await tg.set_webhook(
-        url=f"{settings.NGROK_URL}/webhook", secret_token="test_secret"
+        url=f"{settings.WEBHOOK_URL}/webhook", secret_token=settings.WEBHOOK_SECRET
     )
     app.state.telegram = tg
     yield
