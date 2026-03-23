@@ -13,6 +13,7 @@ from app.features.expenses.dto import (
 from app.features.expenses.algorithms.simplify_debts import simplify_debts
 from app.features.expenses.errors import (
     ChatNotFound,
+    InvalidAmount,
     NotMember,
     ServerError,
     UserNotRegistered,
@@ -106,6 +107,9 @@ class ExpensesService:
     async def add_expense(
         self, tg_chat_id: int, tg_user_id: int, amount: Decimal, desc: str
     ) -> list[BalanceDTO]:
+        if amount <= 0:
+            raise InvalidAmount()
+
         await self.repo.db.begin()
 
         try:
@@ -153,6 +157,9 @@ class ExpensesService:
         split_rule: SplitRule,
         request_username: str,
     ) -> list[BalanceDTO]:
+        if amount <= 0:
+            raise InvalidAmount()
+
         await self.repo.db.begin()
 
         try:

@@ -33,21 +33,37 @@ class ServerError(DomainError):
 
 class ExpenseNotFoundError(DomainError):
     def __init__(self, expense_id: int):
-        super().__init__(message=f"Expense ({expense_id}) not found")
+        super().__init__(
+            message=f"Expense ({expense_id}) not found", code="expense_not_found"
+        )
 
 
 class ExpenseNotOwnedError(DomainError):
     def __init__(self, expense_id: int, username: str):
-        super().__init__(message=f"Expense {expense_id} is not owned by {username}")
+        super().__init__(
+            message=f"Expense {expense_id} is not owned by {username}",
+            code="expense_not_owned",
+        )
 
 
 class NoDebtOwedError(DomainError):
     def __init__(self, to_username: str):
-        super().__init__(message=f"You don't owe anything to @{to_username}")
+        super().__init__(
+            message=f"You don't owe anything to @{to_username}", code="no_debt_owed"
+        )
 
 
 class PaymentExceedsDebtError(DomainError):
     def __init__(self, debt: Decimal, amount: Decimal, to_username: str):
         super().__init__(
-            message=f"You only owe {debt} to @{to_username} but tried to pay {amount}."
+            message=f"You only owe {debt} to @{to_username} but tried to pay {amount}.",
+            code="payment_exceeds_debt",
+        )
+
+
+class InvalidAmount(DomainError):
+    def __init__(self):
+        super().__init__(
+            message="Amount must be greater than zero.",
+            code="invalid_amount",
         )

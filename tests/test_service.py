@@ -11,6 +11,7 @@ from app.features.expenses.errors import (
     ChatNotFound,
     ExpenseNotFoundError,
     ExpenseNotOwnedError,
+    InvalidAmount,
     NotMember,
     ServerError,
     UserNotRegistered,
@@ -162,6 +163,61 @@ class TestExpenses:
             BalanceDTO(username="bob", balance=Decimal("-5")),
         ]
 
+    @pytest.mark.parametrize("amount", [Decimal("0"), Decimal("-5.00")])
+    async def test_add_expense_invalid_amount(
+        self,
+        service: ExpensesService,
+        mock_repo: Mock,
+        amount: Decimal,
+    ) -> None:
+        with pytest.raises(InvalidAmount):
+            await service.add_expense(10, 1, amount, "lunch")
+
+        mock_repo.db.begin.assert_not_called()
+        mock_repo.db.rollback.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "user, chat, is_member, expected_error",
+        [
+            (None, Mock(), False, UserNotRegistered),
+            (Mock(), None, True, ChatNotFound),
+            (Mock(), Mock(), False, NotMember),
+        ],
+    )
+    async def test_add_expense_validation_errors(
+        self,
+        service: ExpensesService,
+        mock_repo: Mock,
+        user,
+        chat,
+        is_member,
+        expected_error,
+    ) -> None:
+        mock_repo.get_user_by_tg_id.return_value = user
+        mock_repo.get_chat_by_tg_id.return_value = chat
+        mock_repo.is_member.return_value = is_member
+
+        with pytest.raises(expected_error):
+            await service.add_expense(10, 1, Decimal("10.00"), "lunch")
+
+        mock_repo.db.rollback.assert_called_once()
+        mock_repo.db.commit.assert_not_called()
+
+    async def test_add_expense_integrity_error_raises_server_error(
+        self, service: ExpensesService, mock_repo: Mock, mocker: MockerFixture
+    ) -> None:
+        mock_repo.get_user_by_tg_id.return_value = mocker.Mock(id=1)
+        mock_repo.get_chat_by_tg_id.return_value = mocker.Mock(id=10)
+        mock_repo.is_member.return_value = True
+        mock_repo.list_members.return_value = []
+        mock_repo.create_expense.side_effect = IntegrityError(None, None, Exception())
+
+        with pytest.raises(ServerError):
+            await service.add_expense(111, 222, Decimal("10.00"), "lunch")
+
+        mock_repo.db.rollback.assert_called_once()
+        mock_repo.db.commit.assert_not_called()
+
     async def test_add_expense_selected_users_success(
         self, service: ExpensesService, mock_repo: Mock, mocker: MockerFixture
     ) -> None:
@@ -204,32 +260,26 @@ class TestExpenses:
             BalanceDTO(username="bob", balance=Decimal("-4")),
         ]
 
-    @pytest.mark.parametrize(
-        "user, chat, is_member, expected_error",
-        [
-            (None, Mock(), False, UserNotRegistered),
-            (Mock(), None, True, ChatNotFound),
-            (Mock(), Mock(), False, NotMember),
-        ],
-    )
-    async def test_add_expense_validation_errors(
+    @pytest.mark.parametrize("amount", [Decimal("0"), Decimal("-5.00")])
+    async def test_add_expense_selected_users_invalid_amount(
         self,
         service: ExpensesService,
         mock_repo: Mock,
-        user,
-        chat,
-        is_member,
-        expected_error,
+        amount: Decimal,
     ) -> None:
-        mock_repo.get_user_by_tg_id.return_value = user
-        mock_repo.get_chat_by_tg_id.return_value = chat
-        mock_repo.is_member.return_value = is_member
+        with pytest.raises(InvalidAmount):
+            await service.add_expense_selected_users(
+                10,
+                1,
+                amount,
+                "lunch",
+                ["@alice=6.00", "@bob=4.00"],
+                SplitRule.AMOUNT,
+                "alice",
+            )
 
-        with pytest.raises(expected_error):
-            await service.add_expense(10, 1, Decimal("10.00"), "lunch")
-
-        mock_repo.db.rollback.assert_called_once()
-        mock_repo.db.commit.assert_not_called()
+        mock_repo.db.begin.assert_not_called()
+        mock_repo.db.rollback.assert_not_called()
 
     @pytest.mark.parametrize(
         "user, chat, is_member, get_user_by_username, expected_error",
@@ -273,21 +323,6 @@ class TestExpenses:
                 SplitRule.AMOUNT,
                 "alice",
             )
-
-        mock_repo.db.rollback.assert_called_once()
-        mock_repo.db.commit.assert_not_called()
-
-    async def test_add_expense_integrity_error_raises_server_error(
-        self, service: ExpensesService, mock_repo: Mock, mocker: MockerFixture
-    ) -> None:
-        mock_repo.get_user_by_tg_id.return_value = mocker.Mock(id=1)
-        mock_repo.get_chat_by_tg_id.return_value = mocker.Mock(id=10)
-        mock_repo.is_member.return_value = True
-        mock_repo.list_members.return_value = []
-        mock_repo.create_expense.side_effect = IntegrityError(None, None, Exception())
-
-        with pytest.raises(ServerError):
-            await service.add_expense(111, 222, Decimal("10.00"), "lunch")
 
         mock_repo.db.rollback.assert_called_once()
         mock_repo.db.commit.assert_not_called()
