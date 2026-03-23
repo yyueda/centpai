@@ -132,8 +132,20 @@ class TestMembership:
 
 class TestExpenses:
 
+    @pytest.mark.parametrize(
+        "amount, expected_split",
+        [
+            (Decimal("10.00"), Decimal("5.00")),
+            (Decimal("9.99"), Decimal("5.00")),  # remainder goes to non-payer
+        ],
+    )
     async def test_add_expense_success(
-        self, service: ExpensesService, mock_repo: Mock, mocker: MockerFixture
+        self,
+        service: ExpensesService,
+        mock_repo: Mock,
+        mocker: MockerFixture,
+        amount,
+        expected_split,
     ) -> None:
         member1 = mocker.Mock(user_id=1)
         member2 = mocker.Mock(user_id=2)
@@ -151,11 +163,16 @@ class TestExpenses:
         mock_repo.list_members.return_value = [member1, member2]
         mock_repo.update_balances.return_value = [balance1, balance2]
 
-        amount = Decimal("10.00")
         result = await service.add_expense(10, 1, amount, "lunch")
 
         mock_repo.db.begin.assert_called_once()
         mock_repo.create_expense.assert_called_once_with(10, 1, amount, "lunch")
+
+        # Test sum of splits = amount
+        mock_repo.create_splits.assert_called_once()
+        _, userid_to_amount = mock_repo.create_splits.call_args.args
+        assert sum(userid_to_amount.values()) == expected_split
+
         mock_repo.update_balances.assert_called_once()
         mock_repo.db.commit.assert_called_once()
         assert result == [
@@ -250,9 +267,15 @@ class TestExpenses:
         )
 
         mock_repo.db.begin.assert_called_once()
-        mock_repo.create_expense.assert_called_once_with(
-            10, 1, amount, "lunch", {1: Decimal("6.00"), 2: Decimal("4.00")}
-        )
+        mock_repo.create_expense.assert_called_once_with(10, 1, amount, "lunch")
+
+        # Test sum of splits = amount
+        mock_repo.create_splits.assert_called_once()
+        _, userid_to_amount = mock_repo.create_splits.call_args.args
+        assert sum(userid_to_amount.values()) == Decimal(
+            "4.00"
+        )  # bob's share only, alice is payer
+
         mock_repo.update_balances.assert_called_once()
         mock_repo.db.commit.assert_called_once()
         assert result == [

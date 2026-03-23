@@ -113,24 +113,29 @@ class ExpensesService:
         await self.repo.db.begin()
 
         try:
-            user = await self.repo.get_user_by_tg_id(tg_user_id)
-            if not user:
+            payer = await self.repo.get_user_by_tg_id(tg_user_id)
+            if not payer:
                 raise UserNotRegistered()
 
             chat = await self.repo.get_chat_by_tg_id(tg_chat_id)
             if not chat:
                 raise ChatNotFound()
 
-            is_member = await self.repo.is_member(chat.id, user.id)
+            is_member = await self.repo.is_member(chat.id, payer.id)
             if not is_member:
                 raise NotMember()
 
             members = await self.repo.list_members(chat.id)
             member_ids = [m.user_id for m in members]
 
-            deltas = self._calc_equal_split_deltas(amount, user.id, member_ids)
+            deltas = self._calc_equal_split_deltas(amount, payer.id, member_ids)
+            expense = await self.repo.create_expense(chat.id, payer.id, amount, desc)
 
-            await self.repo.create_expense(chat.id, user.id, amount, desc)
+            # Deltas return negative amount for those who owe money, thus the minus sign
+            userid_to_amount = {
+                uid: -delta for uid, delta in deltas.items() if uid != payer.id
+            }
+            await self.repo.create_splits(expense, userid_to_amount)
             updated_balances = await self.repo.update_balances(chat.id, deltas)
         except IntegrityError as e:
             await self.repo.db.rollback()
@@ -193,9 +198,13 @@ class ExpensesService:
                 userid_to_amount[member_user.id] = amt
 
             deltas = self._calc_split_rule_deltas(amount, payer.id, userid_to_amount)
-            await self.repo.create_expense(
-                chat.id, payer.id, amount, desc, userid_to_amount
-            )
+
+            # Deltas return negative amount for those who owe money, thus the minus sign
+            userid_to_amount = {
+                uid: -delta for uid, delta in deltas.items() if uid != payer.id
+            }
+            expense = await self.repo.create_expense(chat.id, payer.id, amount, desc)
+            await self.repo.create_splits(expense, userid_to_amount)
             updated_balances = await self.repo.update_balances(chat.id, deltas)
 
         except IntegrityError as e:
