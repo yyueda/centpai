@@ -307,18 +307,6 @@ class ExpensesRepository:
         await self.db.flush()
         return list(bal_by_user.values())
 
-    # async def update_balances_split_rule(self, chat_id: int, paid_user_id: int, total_amount: Decimal, userid_to_amount: dict[int, Decimal]):
-    #     for user_id, amt in userid_to_amount.items():
-    #         bal = await self.get_user_balance(chat_id, user_id)
-    #         assert bal is not None
-
-    #         if user_id != paid_user_id:
-    #             bal.balance -= amt
-    #         else:
-    #             bal.balance += total_amount - amt
-
-    #     await self.db.flush()
-
     async def update_balance(
         self, chat_id: int, from_user_id: int, to_user_id: int, amount: Decimal
     ):
@@ -330,28 +318,3 @@ class ExpensesRepository:
         to_user_balance.balance -= amount
 
         await self.db.flush()
-
-    async def get_pairwise_debt(
-        self, chat_id: int, from_user_id: int, to_user_id: int
-    ) -> Decimal:
-        stmt = (
-            select(func.sum(ExpenseSplit.amount))
-            .join(ExpenseSplit.expense)
-            .where(
-                ExpenseSplit.user_id == from_user_id,
-                ExpenseSplit.expense.has(Expense.payer_id == to_user_id),
-            )
-        )
-        total_amount_owed = await self.db.scalar(stmt)
-        if not total_amount_owed:
-            total_amount_owed = Decimal("0")
-
-        stmt = select(func.sum(Payment.amount)).where(
-            Payment.from_user_id == from_user_id, Payment.to_user_id == to_user_id
-        )
-
-        total_amount_paid = await self.db.scalar(stmt)
-        if not total_amount_paid:
-            total_amount_paid = Decimal("0")
-
-        return Decimal(total_amount_owed - total_amount_paid)

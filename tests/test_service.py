@@ -12,7 +12,10 @@ from app.features.expenses.errors import (
     ExpenseNotFoundError,
     ExpenseNotOwnedError,
     InvalidAmount,
+    NoDebtOwedError,
     NotMember,
+    PaymentExceedsBalanceError,
+    RecipientNotOwedError,
     ServerError,
     UserNotRegistered,
 )
@@ -565,13 +568,61 @@ class TestPayments:
         mock_repo.get_user_by_username.return_value = user_receiver
         mock_repo.get_chat_by_tg_id.return_value = chat
         mock_repo.is_member.return_value = True
-        mock_repo.get_pairwise_debt.return_value = Decimal("100.00")
+        mock_repo.get_user_balance.side_effect = [
+            mocker.Mock(balance=Decimal("-100.00")),  # payer owes money
+            mocker.Mock(balance=Decimal("100.00")),  # recipient is owed money
+        ]
 
         await service.process_payment(tg_chat_id, tg_user_id, to_username, amount)
 
         mock_repo.create_payment.assert_called_once_with(10, 1, 2, amount)
         mock_repo.update_balance.assert_called_once_with(10, 1, 2, amount)
         mock_repo.db.commit.assert_called_once()
+
+    async def test_process_payment_no_debt(
+        self, service: ExpensesService, mock_repo: Mock, mocker: MockerFixture
+    ) -> None:
+        mock_repo.get_user_by_tg_id.return_value = mocker.Mock(id=1)
+        mock_repo.get_user_by_username.return_value = mocker.Mock(id=2)
+        mock_repo.get_chat_by_tg_id.return_value = mocker.Mock(id=10)
+        mock_repo.is_member.return_value = True
+        mock_repo.get_user_balance.side_effect = [
+            mocker.Mock(balance=Decimal("10.00")),  # payer has positive balance
+            mocker.Mock(balance=Decimal("100.00")),
+        ]
+
+        with pytest.raises(NoDebtOwedError):
+            await service.process_payment(111, 222, "bob", Decimal("10.00"))
+
+    async def test_process_payment_recipient_not_owed(
+        self, service: ExpensesService, mock_repo: Mock, mocker: MockerFixture
+    ) -> None:
+        mock_repo.get_user_by_tg_id.return_value = mocker.Mock(id=1)
+        mock_repo.get_user_by_username.return_value = mocker.Mock(id=2)
+        mock_repo.get_chat_by_tg_id.return_value = mocker.Mock(id=10)
+        mock_repo.is_member.return_value = True
+        mock_repo.get_user_balance.side_effect = [
+            mocker.Mock(balance=Decimal("-10.00")),
+            mocker.Mock(balance=Decimal("-100.00")),  # recipient also owes money
+        ]
+
+        with pytest.raises(RecipientNotOwedError):
+            await service.process_payment(111, 222, "bob", Decimal("10.00"))
+
+    async def test_process_payment_exceeds_balance(
+        self, service: ExpensesService, mock_repo: Mock, mocker: MockerFixture
+    ) -> None:
+        mock_repo.get_user_by_tg_id.return_value = mocker.Mock(id=1)
+        mock_repo.get_user_by_username.return_value = mocker.Mock(id=2)
+        mock_repo.get_chat_by_tg_id.return_value = mocker.Mock(id=10)
+        mock_repo.is_member.return_value = True
+        mock_repo.get_user_balance.side_effect = [
+            mocker.Mock(balance=Decimal("-10.00")),
+            mocker.Mock(balance=Decimal("10.00")),  # recipient also owes money
+        ]
+
+        with pytest.raises(PaymentExceedsBalanceError):
+            await service.process_payment(111, 222, "bob", Decimal("20.00"))
 
 
 class TestSplitCalculation:

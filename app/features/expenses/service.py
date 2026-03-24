@@ -14,13 +14,14 @@ from app.features.expenses.algorithms.simplify_debts import simplify_debts
 from app.features.expenses.errors import (
     ChatNotFound,
     InvalidAmount,
+    NoDebtOwedError,
     NotMember,
+    PaymentExceedsBalanceError,
+    RecipientNotOwedError,
     ServerError,
     UserNotRegistered,
     ExpenseNotFoundError,
     ExpenseNotOwnedError,
-    NoDebtOwedError,
-    PaymentExceedsDebtError,
 )
 from app.features.expenses.repo import ExpensesRepository, get_repo
 from sqlalchemy.exc import IntegrityError
@@ -345,15 +346,19 @@ class ExpensesService:
             if not to_user_is_member:
                 raise NotMember(username=to_username)
 
-            total_amount_still_owed = await self.repo.get_pairwise_debt(
-                chat.id, user.id, to_user.id
-            )
-            if total_amount_still_owed == 0:
-                raise NoDebtOwedError(to_username)
-            elif amount > total_amount_still_owed:
-                raise PaymentExceedsDebtError(
-                    total_amount_still_owed, amount, to_username
-                )
+            from_balance = await self.repo.get_user_balance(chat.id, user.id)
+            to_balance = await self.repo.get_user_balance(chat.id, to_user.id)
+
+            # Balances are guranteed to be created when user first joins
+            assert from_balance is not None
+            assert to_balance is not None
+
+            if from_balance.balance >= 0:
+                raise NoDebtOwedError()
+            if to_balance.balance <= 0:
+                raise RecipientNotOwedError(to_username)
+            if amount > abs(from_balance.balance):
+                raise PaymentExceedsBalanceError(from_balance.balance, amount)
 
             # create payment
             await self.repo.create_payment(chat.id, user.id, to_user.id, amount)

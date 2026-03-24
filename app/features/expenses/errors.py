@@ -41,22 +41,20 @@ class ExpenseNotFoundError(DomainError):
 class ExpenseNotOwnedError(DomainError):
     def __init__(self, expense_id: int, username: str):
         super().__init__(
-            message=f"Expense {expense_id} is not owned by {username}",
+            message=f"Expense {expense_id} is not owned by {username}.",
             code="expense_not_owned",
         )
 
 
 class NoDebtOwedError(DomainError):
-    def __init__(self, to_username: str):
-        super().__init__(
-            message=f"You don't owe anything to @{to_username}", code="no_debt_owed"
-        )
+    def __init__(self):
+        super().__init__(message=f"You don't owe anyone money.", code="no_debt_owed")
 
 
-class PaymentExceedsDebtError(DomainError):
-    def __init__(self, debt: Decimal, amount: Decimal, to_username: str):
+class PaymentExceedsBalanceError(DomainError):
+    def __init__(self, debt: Decimal, amount: Decimal):
         super().__init__(
-            message=f"You only owe {debt} to @{to_username} but tried to pay {amount}.",
+            message=f"You only owe {debt} in total but tried to pay {amount}.",
             code="payment_exceeds_debt",
         )
 
@@ -66,4 +64,12 @@ class InvalidAmount(DomainError):
         super().__init__(
             message="Amount must be greater than zero.",
             code="invalid_amount",
+        )
+
+
+class RecipientNotOwedError(DomainError):
+    def __init__(self, to_username: str):
+        super().__init__(
+            message=f"@{to_username} is not owed anything in this chat.",
+            code="recipient_not_owed",
         )
