@@ -22,7 +22,7 @@ from app.features.telegram.schemas import Update
 from app.core.logging import setup_logging
 from app.features.telegram import client
 from app.core.config import settings
-from app.db.database import init_reset_db_dev
+from app.db.database import init_db
 
 setup_logging()
 logger = logging.getLogger("centpai")
@@ -30,8 +30,7 @@ logger = logging.getLogger("centpai")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await init_reset_db_dev()  # dev purposes
-    # await init_db()
+    await init_db()
 
     tg = client.TelegramAPI(settings.BOT_TOKEN)
     await tg.setMyCommands(tg.commands)
