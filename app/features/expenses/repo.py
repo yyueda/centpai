@@ -237,11 +237,11 @@ class ExpensesRepository:
         return list(res)
 
     async def get_expense(self, chat_id: int, expense_id: int) -> Expense | None:
-        stmt = select(Expense).where(
-            Expense.id == expense_id,
-            Expense.chat_id == chat_id,
+        stmt = (
+            select(Expense)
+            .where(Expense.id == expense_id, Expense.chat_id == chat_id)
+            .options(selectinload(Expense.splits))
         )
-
         return await self.db.scalar(stmt)
 
     async def remove_expense(self, expense: Expense) -> None:

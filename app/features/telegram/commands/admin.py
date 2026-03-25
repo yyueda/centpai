@@ -10,9 +10,9 @@ COMMANDS_TEXT = (
     "/leave — leave the current group\n"
     "/members — list members in this chat\n"
     "/add @user — add a member\n"
-    "/remove @user — remove a member\n"
+    "/remove @user — remove a member\n\n"
     "💰 <b>Expenses</b>\n"
-    "/expense_view — view all expenses breakdown\n"
+    "/expense_view — view all expenses breakdown\n\n"
     "/expense_add <code>&lt;Category&gt; &lt;Amount&gt; [split rule]</code> — add an expense\n"
     "<i>Example:</i> <code>/expense_add Dinner 48.50</code>\n\n"
     "/expense_remove <code>&lt;Expense ID&gt;</code> — remove an expense by ID\n\n"
@@ -29,6 +29,10 @@ COMMANDS_TEXT = (
     "<code>@John=10 @Ben=20 @Dylan=18.5</code>\n\n"
     "• <b>Percentages</b> (include your own username):\n"
     "<code>@John=50% @Ben=50%</code>\n\n"
+    "────────────────────\n"
+    "🚀 <b>Project Status</b>\n"
+    "This project is in active development. New features are being added continuously, and we welcome contributions from the community. If you have any suggestions or feature requests, please feel free to open an issue on GitHub.\n\n"
+    "🌐 <b>Github:</b> https://github.com/yyueda/centpai"
 )
 
 

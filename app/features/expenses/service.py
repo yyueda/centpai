@@ -256,6 +256,8 @@ class ExpensesService:
             if expense.payer_id != user.id:
                 raise ExpenseNotOwnedError(expense_id, user.username)
 
+            reverse_deltas = self._calc_remove_expense_deltas(expense)
+            await self.repo.update_balances(chat.id, reverse_deltas)
             await self.repo.remove_expense(expense)
         except IntegrityError as e:
             await self.repo.db.rollback()
@@ -523,6 +525,18 @@ class ExpensesService:
         shares = ExpensesService._split_evenly(amount, n)
         deltas = {uid: -share for uid, share in zip(ordered, shares)}
         deltas[payer_id] += amount
+        return deltas
+
+    @staticmethod
+    def _calc_remove_expense_deltas(expense) -> dict[int, Decimal]:
+        """
+        Returns the reverse deltas needed to undo an expense from balances.
+        Non-payers get +split.amount (was deducted), payer gets -sum(splits) (was credited minus their share).
+        """
+        split_sum = sum((s.amount for s in expense.splits), Decimal(0))
+        deltas: dict[int, Decimal] = {expense.payer_id: -split_sum}
+        for split in expense.splits:
+            deltas[split.user_id] = split.amount
         return deltas
 
     @staticmethod
