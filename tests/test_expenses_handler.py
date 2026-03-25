@@ -5,7 +5,6 @@ from unittest.mock import AsyncMock, Mock
 
 from app.core.errors import DomainError
 from app.features.expenses.dto import SplitRule
-from app.features.expenses.errors import NotMember, UserNotRegistered
 from app.features.expenses.service import ExpensesService
 from app.features.telegram.commands.expenses import (
     check_split_rule,

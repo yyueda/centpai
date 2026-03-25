@@ -11,7 +11,11 @@ from app.features.expenses.errors import (
     ChatNotFound,
     ExpenseNotFoundError,
     ExpenseNotOwnedError,
+    InvalidAmount,
+    NoDebtOwedError,
     NotMember,
+    PaymentExceedsBalanceError,
+    RecipientNotOwedError,
     ServerError,
     UserNotRegistered,
 )
@@ -131,8 +135,20 @@ class TestMembership:
 
 class TestExpenses:
 
+    @pytest.mark.parametrize(
+        "amount, expected_split",
+        [
+            (Decimal("10.00"), Decimal("5.00")),
+            (Decimal("9.99"), Decimal("5.00")),  # remainder goes to non-payer
+        ],
+    )
     async def test_add_expense_success(
-        self, service: ExpensesService, mock_repo: Mock, mocker: MockerFixture
+        self,
+        service: ExpensesService,
+        mock_repo: Mock,
+        mocker: MockerFixture,
+        amount,
+        expected_split,
     ) -> None:
         member1 = mocker.Mock(user_id=1)
         member2 = mocker.Mock(user_id=2)
@@ -150,17 +166,77 @@ class TestExpenses:
         mock_repo.list_members.return_value = [member1, member2]
         mock_repo.update_balances.return_value = [balance1, balance2]
 
-        amount = Decimal("10.00")
         result = await service.add_expense(10, 1, amount, "lunch")
 
         mock_repo.db.begin.assert_called_once()
         mock_repo.create_expense.assert_called_once_with(10, 1, amount, "lunch")
+
+        # Test sum of splits = amount
+        mock_repo.create_splits.assert_called_once()
+        _, userid_to_amount = mock_repo.create_splits.call_args.args
+        assert sum(userid_to_amount.values()) == expected_split
+
         mock_repo.update_balances.assert_called_once()
         mock_repo.db.commit.assert_called_once()
         assert result == [
             BalanceDTO(username="alice", balance=Decimal("5")),
             BalanceDTO(username="bob", balance=Decimal("-5")),
         ]
+
+    @pytest.mark.parametrize("amount", [Decimal("0"), Decimal("-5.00")])
+    async def test_add_expense_invalid_amount(
+        self,
+        service: ExpensesService,
+        mock_repo: Mock,
+        amount: Decimal,
+    ) -> None:
+        with pytest.raises(InvalidAmount):
+            await service.add_expense(10, 1, amount, "lunch")
+
+        mock_repo.db.begin.assert_not_called()
+        mock_repo.db.rollback.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "user, chat, is_member, expected_error",
+        [
+            (None, Mock(), False, UserNotRegistered),
+            (Mock(), None, True, ChatNotFound),
+            (Mock(), Mock(), False, NotMember),
+        ],
+    )
+    async def test_add_expense_validation_errors(
+        self,
+        service: ExpensesService,
+        mock_repo: Mock,
+        user,
+        chat,
+        is_member,
+        expected_error,
+    ) -> None:
+        mock_repo.get_user_by_tg_id.return_value = user
+        mock_repo.get_chat_by_tg_id.return_value = chat
+        mock_repo.is_member.return_value = is_member
+
+        with pytest.raises(expected_error):
+            await service.add_expense(10, 1, Decimal("10.00"), "lunch")
+
+        mock_repo.db.rollback.assert_called_once()
+        mock_repo.db.commit.assert_not_called()
+
+    async def test_add_expense_integrity_error_raises_server_error(
+        self, service: ExpensesService, mock_repo: Mock, mocker: MockerFixture
+    ) -> None:
+        mock_repo.get_user_by_tg_id.return_value = mocker.Mock(id=1)
+        mock_repo.get_chat_by_tg_id.return_value = mocker.Mock(id=10)
+        mock_repo.is_member.return_value = True
+        mock_repo.list_members.return_value = []
+        mock_repo.create_expense.side_effect = IntegrityError(None, None, Exception())
+
+        with pytest.raises(ServerError):
+            await service.add_expense(111, 222, Decimal("10.00"), "lunch")
+
+        mock_repo.db.rollback.assert_called_once()
+        mock_repo.db.commit.assert_not_called()
 
     async def test_add_expense_selected_users_success(
         self, service: ExpensesService, mock_repo: Mock, mocker: MockerFixture
@@ -194,9 +270,15 @@ class TestExpenses:
         )
 
         mock_repo.db.begin.assert_called_once()
-        mock_repo.create_expense.assert_called_once_with(
-            10, 1, amount, "lunch", {1: Decimal("6.00"), 2: Decimal("4.00")}
-        )
+        mock_repo.create_expense.assert_called_once_with(10, 1, amount, "lunch")
+
+        # Test sum of splits = amount
+        mock_repo.create_splits.assert_called_once()
+        _, userid_to_amount = mock_repo.create_splits.call_args.args
+        assert sum(userid_to_amount.values()) == Decimal(
+            "4.00"
+        )  # bob's share only, alice is payer
+
         mock_repo.update_balances.assert_called_once()
         mock_repo.db.commit.assert_called_once()
         assert result == [
@@ -204,32 +286,26 @@ class TestExpenses:
             BalanceDTO(username="bob", balance=Decimal("-4")),
         ]
 
-    @pytest.mark.parametrize(
-        "user, chat, is_member, expected_error",
-        [
-            (None, Mock(), False, UserNotRegistered),
-            (Mock(), None, True, ChatNotFound),
-            (Mock(), Mock(), False, NotMember),
-        ],
-    )
-    async def test_add_expense_validation_errors(
+    @pytest.mark.parametrize("amount", [Decimal("0"), Decimal("-5.00")])
+    async def test_add_expense_selected_users_invalid_amount(
         self,
         service: ExpensesService,
         mock_repo: Mock,
-        user,
-        chat,
-        is_member,
-        expected_error,
+        amount: Decimal,
     ) -> None:
-        mock_repo.get_user_by_tg_id.return_value = user
-        mock_repo.get_chat_by_tg_id.return_value = chat
-        mock_repo.is_member.return_value = is_member
+        with pytest.raises(InvalidAmount):
+            await service.add_expense_selected_users(
+                10,
+                1,
+                amount,
+                "lunch",
+                ["@alice=6.00", "@bob=4.00"],
+                SplitRule.AMOUNT,
+                "alice",
+            )
 
-        with pytest.raises(expected_error):
-            await service.add_expense(10, 1, Decimal("10.00"), "lunch")
-
-        mock_repo.db.rollback.assert_called_once()
-        mock_repo.db.commit.assert_not_called()
+        mock_repo.db.begin.assert_not_called()
+        mock_repo.db.rollback.assert_not_called()
 
     @pytest.mark.parametrize(
         "user, chat, is_member, get_user_by_username, expected_error",
@@ -273,21 +349,6 @@ class TestExpenses:
                 SplitRule.AMOUNT,
                 "alice",
             )
-
-        mock_repo.db.rollback.assert_called_once()
-        mock_repo.db.commit.assert_not_called()
-
-    async def test_add_expense_integrity_error_raises_server_error(
-        self, service: ExpensesService, mock_repo: Mock, mocker: MockerFixture
-    ) -> None:
-        mock_repo.get_user_by_tg_id.return_value = mocker.Mock(id=1)
-        mock_repo.get_chat_by_tg_id.return_value = mocker.Mock(id=10)
-        mock_repo.is_member.return_value = True
-        mock_repo.list_members.return_value = []
-        mock_repo.create_expense.side_effect = IntegrityError(None, None, Exception())
-
-        with pytest.raises(ServerError):
-            await service.add_expense(111, 222, Decimal("10.00"), "lunch")
 
         mock_repo.db.rollback.assert_called_once()
         mock_repo.db.commit.assert_not_called()
@@ -552,13 +613,61 @@ class TestPayments:
         mock_repo.get_user_by_username.return_value = user_receiver
         mock_repo.get_chat_by_tg_id.return_value = chat
         mock_repo.is_member.return_value = True
-        mock_repo.get_pairwise_debt.return_value = Decimal("100.00")
+        mock_repo.get_user_balance.side_effect = [
+            mocker.Mock(balance=Decimal("-100.00")),  # payer owes money
+            mocker.Mock(balance=Decimal("100.00")),  # recipient is owed money
+        ]
 
         await service.process_payment(tg_chat_id, tg_user_id, to_username, amount)
 
         mock_repo.create_payment.assert_called_once_with(10, 1, 2, amount)
         mock_repo.update_balance.assert_called_once_with(10, 1, 2, amount)
         mock_repo.db.commit.assert_called_once()
+
+    async def test_process_payment_no_debt(
+        self, service: ExpensesService, mock_repo: Mock, mocker: MockerFixture
+    ) -> None:
+        mock_repo.get_user_by_tg_id.return_value = mocker.Mock(id=1)
+        mock_repo.get_user_by_username.return_value = mocker.Mock(id=2)
+        mock_repo.get_chat_by_tg_id.return_value = mocker.Mock(id=10)
+        mock_repo.is_member.return_value = True
+        mock_repo.get_user_balance.side_effect = [
+            mocker.Mock(balance=Decimal("10.00")),  # payer has positive balance
+            mocker.Mock(balance=Decimal("100.00")),
+        ]
+
+        with pytest.raises(NoDebtOwedError):
+            await service.process_payment(111, 222, "bob", Decimal("10.00"))
+
+    async def test_process_payment_recipient_not_owed(
+        self, service: ExpensesService, mock_repo: Mock, mocker: MockerFixture
+    ) -> None:
+        mock_repo.get_user_by_tg_id.return_value = mocker.Mock(id=1)
+        mock_repo.get_user_by_username.return_value = mocker.Mock(id=2)
+        mock_repo.get_chat_by_tg_id.return_value = mocker.Mock(id=10)
+        mock_repo.is_member.return_value = True
+        mock_repo.get_user_balance.side_effect = [
+            mocker.Mock(balance=Decimal("-10.00")),
+            mocker.Mock(balance=Decimal("-100.00")),  # recipient also owes money
+        ]
+
+        with pytest.raises(RecipientNotOwedError):
+            await service.process_payment(111, 222, "bob", Decimal("10.00"))
+
+    async def test_process_payment_exceeds_balance(
+        self, service: ExpensesService, mock_repo: Mock, mocker: MockerFixture
+    ) -> None:
+        mock_repo.get_user_by_tg_id.return_value = mocker.Mock(id=1)
+        mock_repo.get_user_by_username.return_value = mocker.Mock(id=2)
+        mock_repo.get_chat_by_tg_id.return_value = mocker.Mock(id=10)
+        mock_repo.is_member.return_value = True
+        mock_repo.get_user_balance.side_effect = [
+            mocker.Mock(balance=Decimal("-10.00")),
+            mocker.Mock(balance=Decimal("10.00")),  # recipient also owes money
+        ]
+
+        with pytest.raises(PaymentExceedsBalanceError):
+            await service.process_payment(111, 222, "bob", Decimal("20.00"))
 
 
 class TestSplitCalculation:

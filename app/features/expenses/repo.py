@@ -1,6 +1,5 @@
-from decimal import ROUND_HALF_UP, Decimal
-from typing import Iterable
-from sqlalchemy import select, func
+from decimal import Decimal
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import IntegrityError
@@ -179,9 +178,7 @@ class ExpensesRepository:
         payer_user_id: int,
         amount: Decimal,
         description: str,
-        userid_to_amount: dict[int, Decimal] | None = None,
-    ) -> None:
-
+    ) -> Expense:
         expense = Expense(
             chat_id=chat_id,
             payer_id=payer_user_id,
@@ -190,33 +187,17 @@ class ExpensesRepository:
         )
 
         self.db.add(expense)
-
-        # get all members of chat group
-        if not userid_to_amount:
-            members = await self.list_members(chat_id)
-            split_amount = Decimal(amount / len(members)).quantize(
-                Decimal("0.01"), rounding=ROUND_HALF_UP
-            )
-            splits = [
-                ExpenseSplit(
-                    user_id=member.user_id, amount=split_amount, expense=expense
-                )
-                for member in members
-                if member.user.id != payer_user_id
-            ]
-            await self.add_splits(splits)
-        else:
-            splits = []
-            for user_id, amt in userid_to_amount.items():
-                if user_id != payer_user_id:
-                    splits.append(
-                        ExpenseSplit(user_id=user_id, amount=amt, expense=expense)
-                    )
-            await self.add_splits(splits)
-
         await self.db.flush()  # assigns expense.id
+        return expense
 
-    async def add_splits(self, splits: Iterable[ExpenseSplit]) -> None:
+    async def create_splits(
+        self, expense: Expense, userid_to_amount: dict[int, Decimal]
+    ) -> None:
+        splits = [
+            ExpenseSplit(user_id=user_id, amount=amt, expense=expense)
+            for user_id, amt in userid_to_amount.items()
+        ]
+
         self.db.add_all(splits)
         await self.db.flush()
 
@@ -325,18 +306,6 @@ class ExpensesRepository:
         await self.db.flush()
         return list(bal_by_user.values())
 
-    # async def update_balances_split_rule(self, chat_id: int, paid_user_id: int, total_amount: Decimal, userid_to_amount: dict[int, Decimal]):
-    #     for user_id, amt in userid_to_amount.items():
-    #         bal = await self.get_user_balance(chat_id, user_id)
-    #         assert bal is not None
-
-    #         if user_id != paid_user_id:
-    #             bal.balance -= amt
-    #         else:
-    #             bal.balance += total_amount - amt
-
-    #     await self.db.flush()
-
     async def update_balance(
         self, chat_id: int, from_user_id: int, to_user_id: int, amount: Decimal
     ):
@@ -348,28 +317,3 @@ class ExpensesRepository:
         to_user_balance.balance -= amount
 
         await self.db.flush()
-
-    async def get_pairwise_debt(
-        self, chat_id: int, from_user_id: int, to_user_id: int
-    ) -> Decimal:
-        stmt = (
-            select(func.sum(ExpenseSplit.amount))
-            .join(ExpenseSplit.expense)
-            .where(
-                ExpenseSplit.user_id == from_user_id,
-                ExpenseSplit.expense.has(Expense.payer_id == to_user_id),
-            )
-        )
-        total_amount_owed = await self.db.scalar(stmt)
-        if not total_amount_owed:
-            total_amount_owed = Decimal("0")
-
-        stmt = select(func.sum(Payment.amount)).where(
-            Payment.from_user_id == from_user_id, Payment.to_user_id == to_user_id
-        )
-
-        total_amount_paid = await self.db.scalar(stmt)
-        if not total_amount_paid:
-            total_amount_paid = Decimal("0")
-
-        return Decimal(total_amount_owed - total_amount_paid)
