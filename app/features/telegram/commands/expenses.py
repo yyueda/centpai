@@ -29,6 +29,7 @@ async def handleAddExpense(
         )  # rest becomes description
 
         if len_mentioned_usernames > 0:
+            validate_no_duplicate_usernames(mentioned_usernames)
             username_amounts = args[len(args) - len_mentioned_usernames :]
             split_rule = check_split_rule(username_amounts)
             updated_balances = await svc.add_expense_selected_users(
@@ -100,6 +101,11 @@ def parse_user(user: str) -> str:
         raise ValueError("Incorrect user format")
 
     return user_split[1]
+
+
+def validate_no_duplicate_usernames(mentioned_usernames: list[str]) -> None:
+    if len(mentioned_usernames) != len(set(mentioned_usernames)):
+        raise ValueError("Duplicate usernames are not allowed in a split rule.")
 
 
 def check_split_rule(username_amounts: list[str]) -> SplitRule:
@@ -186,6 +192,7 @@ async def handleRemoveExpense(
             chat_id=ctx.tg_chat_id,
             text=f"Expense <code>#{expense_id}</code> removed.",
             reply_to_message_id=ctx.message_id,
+            parse_mode="HTML",
         )
     except ValueError as e:
         await messenger.send_message(
@@ -221,6 +228,7 @@ async def handlePay(
             chat_id=ctx.tg_chat_id,
             text=f"✅ <code>${amount}</code> paid to <b>{username}</b>.",
             reply_to_message_id=ctx.message_id,
+            parse_mode="HTML",
         )
     except ValueError as e:
         await messenger.send_message(
