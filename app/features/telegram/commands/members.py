@@ -2,7 +2,6 @@ from app.features.expenses.service import ExpensesService
 from app.features.telegram.client import Messenger
 from app.features.telegram.context import TgContext
 from app.core.errors import DomainError
-from app.features.expenses.errors import ChatNotFound
 
 
 async def handleJoin(

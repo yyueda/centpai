@@ -1,6 +1,5 @@
-from decimal import ROUND_HALF_UP, Decimal
-from typing import Iterable
-from sqlalchemy import select, func
+from decimal import Decimal
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import IntegrityError

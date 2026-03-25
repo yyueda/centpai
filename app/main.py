@@ -1,10 +1,7 @@
 import logging
 from contextlib import asynccontextmanager
-from dataclasses import dataclass
-from typing import Union
 from fastapi import Depends, FastAPI, Request
 from app.core.middleware import RateLimiterMiddleware
-from app.features.expenses.repo import ExpensesRepository, get_repo
 from app.features.expenses.service import ExpensesService, get_service
 from app.features.telegram.commands.admin import handleHelp, handleInit
 from app.features.telegram.commands.command_parser import CommandName, parse_command
