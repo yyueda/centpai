@@ -372,7 +372,7 @@ class TestExpenses:
     ) -> None:
         user = mocker.Mock(id=1, username="alice")
         chat = mocker.Mock(id=10)
-        expense = mocker.Mock(id=99, payer_id=1)
+        expense = mocker.Mock(id=99, payer_id=1, splits=[])
 
         mock_repo.get_user_by_tg_id.return_value = user
         mock_repo.get_chat_by_tg_id.return_value = chat
@@ -382,9 +382,54 @@ class TestExpenses:
         await service.remove_expense(10, 1, 99)
 
         mock_repo.get_expense.assert_called_once_with(10, 99)
+        mock_repo.update_balances.assert_called_once_with(10, {1: Decimal("0.00")})
         mock_repo.remove_expense.assert_called_once_with(expense)
         mock_repo.db.commit.assert_called_once()
         mock_repo.db.rollback.assert_not_called()
+
+    async def test_remove_expense_reverses_balances(
+        self, service: ExpensesService, mock_repo: Mock, mocker: MockerFixture
+    ) -> None:
+        user = mocker.Mock(id=1, username="alice")
+        chat = mocker.Mock(id=10)
+        split1 = mocker.Mock(user_id=2, amount=Decimal("5.00"))
+        split2 = mocker.Mock(user_id=3, amount=Decimal("3.00"))
+        expense = mocker.Mock(id=99, payer_id=1, splits=[split1, split2])
+
+        mock_repo.get_user_by_tg_id.return_value = user
+        mock_repo.get_chat_by_tg_id.return_value = chat
+        mock_repo.is_member.return_value = True
+        mock_repo.get_expense.return_value = expense
+
+        await service.remove_expense(10, 1, 99)
+
+        mock_repo.update_balances.assert_called_once_with(
+            10,
+            {1: Decimal("-8.00"), 2: Decimal("5.00"), 3: Decimal("3.00")},
+        )
+
+    async def test_remove_expense_update_balances_before_delete(
+        self, service: ExpensesService, mock_repo: Mock, mocker: MockerFixture
+    ) -> None:
+        user = mocker.Mock(id=1, username="alice")
+        chat = mocker.Mock(id=10)
+        expense = mocker.Mock(id=99, payer_id=1, splits=[])
+        call_order = []
+
+        mock_repo.get_user_by_tg_id.return_value = user
+        mock_repo.get_chat_by_tg_id.return_value = chat
+        mock_repo.is_member.return_value = True
+        mock_repo.get_expense.return_value = expense
+        mock_repo.update_balances.side_effect = lambda *_: call_order.append(
+            "update_balances"
+        )
+        mock_repo.remove_expense.side_effect = lambda *_: call_order.append(
+            "remove_expense"
+        )
+
+        await service.remove_expense(10, 1, 99)
+
+        assert call_order == ["update_balances", "remove_expense"]
 
     @pytest.mark.parametrize(
         "user, chat, is_member, expense, expected_error",
@@ -422,7 +467,7 @@ class TestExpenses:
         mock_repo.get_user_by_tg_id.return_value = mocker.Mock(id=1, username="alice")
         mock_repo.get_chat_by_tg_id.return_value = mocker.Mock(id=10)
         mock_repo.is_member.return_value = True
-        mock_repo.get_expense.return_value = mocker.Mock(payer_id=1)
+        mock_repo.get_expense.return_value = mocker.Mock(payer_id=1, splits=[])
         mock_repo.remove_expense.side_effect = IntegrityError(None, None, Exception())
 
         with pytest.raises(ServerError):
@@ -552,3 +597,39 @@ class TestSplitCalculation:
 
         # Payer gets: 10
         assert deltas[1] == Decimal("10.00")
+
+    def test_calc_remove_expense_deltas_with_splits(
+        self, service: ExpensesService, mocker: MockerFixture
+    ) -> None:
+        split1 = mocker.Mock(user_id=2, amount=Decimal("5.00"))
+        split2 = mocker.Mock(user_id=3, amount=Decimal("3.00"))
+        expense = mocker.Mock(payer_id=1, splits=[split1, split2])
+
+        deltas = service._calc_remove_expense_deltas(expense)
+
+        assert deltas[1] == Decimal("-8.00")  # payer: -(5 + 3)
+        assert deltas[2] == Decimal("5.00")
+        assert deltas[3] == Decimal("3.00")
+        assert sum(deltas.values()) == Decimal("0.00")
+
+    def test_calc_remove_expense_deltas_no_splits(
+        self, service: ExpensesService, mocker: MockerFixture
+    ) -> None:
+        expense = mocker.Mock(payer_id=1, splits=[])
+
+        deltas = service._calc_remove_expense_deltas(expense)
+
+        assert deltas == {1: Decimal("0")}
+
+    def test_calc_remove_expense_deltas_zero_sum(
+        self, service: ExpensesService, mocker: MockerFixture
+    ) -> None:
+        """Reverse deltas must always sum to zero (balance sheet invariant)."""
+        split1 = mocker.Mock(user_id=2, amount=Decimal("3.34"))
+        split2 = mocker.Mock(user_id=3, amount=Decimal("3.33"))
+        split3 = mocker.Mock(user_id=4, amount=Decimal("3.33"))
+        expense = mocker.Mock(payer_id=1, splits=[split1, split2, split3])
+
+        deltas = service._calc_remove_expense_deltas(expense)
+
+        assert sum(deltas.values()) == Decimal("0.00")
