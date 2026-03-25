@@ -121,7 +121,8 @@ async def read_webhook(
 
             if pending_action == "add_expense":
                 text = update.message.text or ""
-                if text.strip().lower() in ("/cancel", "cancel"):
+                normalized = text.strip().lower()
+                if normalized == "/cancel" or normalized.startswith("/cancel@") or normalized == "cancel":
                     request.app.state.pending_actions.pop((ctx.tg_chat_id, ctx.tg_user_id), None)
                     await tg.send_message(
                         ctx.tg_chat_id,
