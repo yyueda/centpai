@@ -20,7 +20,7 @@ from app.features.telegram.commands.members import (
     handleLeave,
     handleListMembers,
 )
-from app.features.telegram.context import build_context_from_update
+from app.features.telegram.context import build_context_from_update, text_with_user_greeting
 from app.features.telegram.schemas import Update
 from app.core.logging import setup_logging
 from app.features.telegram import client
@@ -42,6 +42,7 @@ async def lifespan(app: FastAPI):
         url=f"{settings.WEBHOOK_URL}/webhook", secret_token=settings.WEBHOOK_SECRET
     )
     app.state.telegram = tg
+    app.state.pending_actions = {}  # (chat_id, user_id) -> action
     yield
 
     # Cleanup
@@ -84,9 +85,16 @@ async def read_webhook(
 
     try:
         if update.message:
-            command = parse_command(update.message)
+            pending_action = request.app.state.pending_actions.get(
+                (ctx.tg_chat_id, ctx.tg_user_id)
+            )
 
+            # Prioritize explicit commands even during pending actions
+            command = parse_command(update.message)
             if command:
+                if pending_action is not None:
+                    request.app.state.pending_actions.pop((ctx.tg_chat_id, ctx.tg_user_id), None)
+
                 match command.name:
                     case CommandName.MEMBERS:
                         await handleListMembers(ctx, tg, svc)
@@ -111,24 +119,91 @@ async def read_webhook(
 
                 return {"ok": True}
 
+            if pending_action == "add_expense":
+                text = update.message.text or ""
+                if text.strip().lower() in ("/cancel", "cancel"):
+                    request.app.state.pending_actions.pop((ctx.tg_chat_id, ctx.tg_user_id), None)
+                    await tg.send_message(
+                        ctx.tg_chat_id,
+                        "✅ Add expense canceled. Type /help to see commands.",
+                        reply_to_message_id=ctx.message_id,
+                    )
+                    return {"ok": True}
+
+                args = text.strip().split()
+                mentioned_usernames = [t[1:] for t in args if t.startswith("@")]
+
+                await handleAddExpense(ctx, tg, svc, args, mentioned_usernames)
+                request.app.state.pending_actions.pop((ctx.tg_chat_id, ctx.tg_user_id), None)
+                return {"ok": True}
+
         # For button clicks
         if update.callback_query:
             cq = update.callback_query
-            callback_id = cq.id
             data = cq.data
 
             # message can be None in some callback scenarios
             if cq.message is None:
-                await tg.answer_callback_query(
-                    callback_query_id=callback_id, text="Unsupported action."
+                return {"ok": True}
+
+            if not data:
+                await tg.send_message(
+                    ctx.tg_chat_id,
+                    "Invalid button action.",
+                    reply_to_message_id=cq.message.message_id,
                 )
                 return {"ok": True}
 
-            match data:
+            action = data
+            target_user_id = None
+            if ":" in data:
+                action, owner = data.split(":", 1)
+                try:
+                    target_user_id = int(owner)
+                except ValueError:
+                    target_user_id = None
+
+            if target_user_id is not None and target_user_id != ctx.tg_user_id:
+                await tg.send_message(
+                    ctx.tg_chat_id,
+                    "This menu is reserved for the user who opened it. Please send /help to open your own menu.",
+                    reply_to_message_id=cq.message.message_id,
+                )
+                return {"ok": True}
+
+            match action:
                 case "join_group":
                     await handleJoin(ctx, tg, svc)
                 case "leave_group":
                     await handleLeave(ctx, tg, svc)
+                case "add_expense":
+                    try:
+                        members = await svc.get_members(ctx.tg_chat_id)
+                    except Exception:
+                        members = []
+
+                    if ctx.username not in members:
+                        await tg.send_message(
+                            ctx.tg_chat_id,
+                            text_with_user_greeting(
+                                ctx,
+                                "You are not registered yet. Please join first with /join.",
+                            ),
+                            reply_to_message_id=ctx.message_id,
+                        )
+                        return {"ok": True}
+
+                    request.app.state.pending_actions[(ctx.tg_chat_id, ctx.tg_user_id)] = "add_expense"
+                    await tg.send_message(
+                        ctx.tg_chat_id,
+                        text_with_user_greeting(
+                            ctx,
+                            "Enter the expense details as: <amount> <description> [@user1 @user2].\n"
+                            "For example: 25.50 Lunch @alice @bob\n\n"
+                            "Send /cancel to abort.",
+                        ),
+                        reply_to_message_id=ctx.message_id,
+                    )
                 case "view_expenses_breakdown":
                     await handleListExpenses(ctx, tg, svc)
                 case "help":

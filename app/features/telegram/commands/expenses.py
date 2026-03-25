@@ -1,9 +1,10 @@
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from app.core.errors import DomainError
 from app.features.expenses.dto import SplitRule
+from app.features.expenses.errors import NotMember, UserNotRegistered
 from app.features.expenses.service import ExpensesService
 from app.features.telegram.client import Messenger
-from app.features.telegram.context import TgContext
+from app.features.telegram.context import TgContext, text_with_user_greeting
 
 
 async def handleAddExpense(
@@ -16,7 +17,7 @@ async def handleAddExpense(
     if not args:
         await messenger.send_message(
             ctx.tg_chat_id,
-            "Usage: /expense_add <amount> <desc>",
+            text_with_user_greeting(ctx, "Usage: /expense_add <amount> <desc>"),
             reply_to_message_id=ctx.message_id,
         )
         return
@@ -69,11 +70,27 @@ async def handleAddExpense(
     except ValueError as e:
         await messenger.send_message(
             ctx.tg_chat_id,
-            "❌ " + str(e),
+            text_with_user_greeting(ctx, "❌ " + str(e)),
+            ctx.message_id,
+        )
+    except UserNotRegistered:
+        await messenger.send_message(
+            ctx.tg_chat_id,
+            text_with_user_greeting(ctx, "User is not registered yet. Please use /join first."),
+            ctx.message_id,
+        )
+    except NotMember:
+        await messenger.send_message(
+            ctx.tg_chat_id,
+            text_with_user_greeting(ctx, "You are not a member of this chat. Please use /join first."),
             ctx.message_id,
         )
     except DomainError as e:
-        await messenger.send_message(ctx.tg_chat_id, e.message, ctx.message_id)
+        await messenger.send_message(
+            ctx.tg_chat_id,
+            text_with_user_greeting(ctx, e.message),
+            ctx.message_id,
+        )
 
 
 def parse_amount(amount: str) -> Decimal:
@@ -155,14 +172,14 @@ async def handleListExpenses(
 
             await messenger.send_message(
                 chat_id=ctx.tg_chat_id,
-                text="\n\n".join(message_lines),
+                text=text_with_user_greeting(ctx, "\n\n".join(message_lines)),
                 reply_to_message_id=ctx.message_id,
                 parse_mode="HTML",
             )
         else:
             await messenger.send_message(
                 chat_id=ctx.tg_chat_id,
-                text="No expenses found.",
+                text=text_with_user_greeting(ctx, "No expenses found."),
                 reply_to_message_id=ctx.message_id,
             )
     except DomainError as e:
@@ -179,7 +196,7 @@ async def handleRemoveExpense(
     if not args:
         await messenger.send_message(
             ctx.tg_chat_id,
-            "Usage: /expense_remove <Expense ID>",
+            text=text_with_user_greeting(ctx, "Usage: /expense_remove <Expense ID>"),
             reply_to_message_id=ctx.message_id,
         )
         return
@@ -190,14 +207,14 @@ async def handleRemoveExpense(
 
         await messenger.send_message(
             chat_id=ctx.tg_chat_id,
-            text=f"Expense <code>#{expense_id}</code> removed.",
+            text=text_with_user_greeting(ctx, f"Expense <code>#{expense_id}</code> removed."),
             reply_to_message_id=ctx.message_id,
             parse_mode="HTML",
         )
     except ValueError as e:
         await messenger.send_message(
             chat_id=ctx.tg_chat_id,
-            text=f"❌ {str(e)}",
+            text=text_with_user_greeting(ctx, f"❌ {str(e)}"),
             reply_to_message_id=ctx.message_id,
         )
     except DomainError as e:
@@ -214,7 +231,7 @@ async def handlePay(
     if not args or len(args) != 2:
         await messenger.send_message(
             ctx.tg_chat_id,
-            "Usage: /pay @user <amount>",
+            text_with_user_greeting(ctx, "Usage: /pay @user <amount>"),
             reply_to_message_id=ctx.message_id,
         )
         return
@@ -226,20 +243,20 @@ async def handlePay(
 
         await messenger.send_message(
             chat_id=ctx.tg_chat_id,
-            text=f"✅ <code>${amount}</code> paid to <b>{username}</b>.",
+            text=text_with_user_greeting(ctx, f"✅ <code>${amount}</code> paid to <b>{username}</b>."),
             reply_to_message_id=ctx.message_id,
             parse_mode="HTML",
         )
     except ValueError as e:
         await messenger.send_message(
             chat_id=ctx.tg_chat_id,
-            text=f"❌ {str(e)}",
+            text=text_with_user_greeting(ctx, f"❌ {str(e)}"),
             reply_to_message_id=ctx.message_id,
         )
     except DomainError as e:
         await messenger.send_message(
             chat_id=ctx.tg_chat_id,
-            text=f"❌ {e.message}",
+            text=text_with_user_greeting(ctx, f"❌ {e.message}"),
             reply_to_message_id=ctx.message_id,
         )
 
@@ -253,7 +270,7 @@ async def handleDebts(
         if not simplified_debts:
             await messenger.send_message(
                 chat_id=ctx.tg_chat_id,
-                text="No debts.",
+                text=text_with_user_greeting(ctx, "No debts."),
                 reply_to_message_id=ctx.message_id,
             )
             return
@@ -266,14 +283,14 @@ async def handleDebts(
 
         await messenger.send_message(
             chat_id=ctx.tg_chat_id,
-            text="\n".join(lines),
+            text=text_with_user_greeting(ctx, "\n".join(lines)),
             reply_to_message_id=ctx.message_id,
             parse_mode="HTML",
         )
     except DomainError as e:
         await messenger.send_message(
             chat_id=ctx.tg_chat_id,
-            text=f"❌ {e.message}",
+            text=text_with_user_greeting(ctx, f"❌ {e.message}"),
             reply_to_message_id=ctx.message_id,
             parse_mode="HTML",
         )

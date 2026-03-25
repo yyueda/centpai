@@ -51,3 +51,13 @@ def build_context_from_update(u: Update) -> TgContext | None:
         message_id=message_id,
         text=text,
     )
+
+
+def user_mention(ctx: TgContext) -> str:
+    if ctx.username:
+        return f"@{ctx.username}"
+    return "User"
+
+
+def text_with_user_greeting(ctx: TgContext, text: str) -> str:
+    return f"Hey {user_mention(ctx)}! {text}"

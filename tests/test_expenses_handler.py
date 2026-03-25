@@ -255,7 +255,7 @@ class TestHandleAddExpense:
 
         messenger.send_message.assert_called_once()
         call_text = messenger.send_message.call_args[0][1]
-        assert call_text == "Chat not found"
+        assert call_text == "Hey @alice! Chat not found"
 
     async def test_value_error_from_split_sends_error_message(
         self, ctx, messenger, svc

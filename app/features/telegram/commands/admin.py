@@ -1,6 +1,6 @@
 from app.features.expenses.service import ExpensesService
 from app.features.telegram.client import Messenger
-from app.features.telegram.context import TgContext
+from app.features.telegram.context import TgContext, text_with_user_greeting
 
 COMMANDS_TEXT = (
     "📋 <b>Commands</b>\n\n"
@@ -37,7 +37,12 @@ COMMANDS_TEXT = (
 
 
 async def handleHelp(ctx: TgContext, messenger: Messenger) -> None:
-    await messenger.send_message(ctx.tg_chat_id, COMMANDS_TEXT, parse_mode="HTML")
+    await messenger.send_message(
+        ctx.tg_chat_id,
+        text_with_user_greeting(ctx, COMMANDS_TEXT),
+        reply_markup=_build_menu_keyboard(ctx.tg_user_id),
+        parse_mode="HTML",
+    )
 
 
 async def handleInit(
@@ -50,28 +55,49 @@ async def handleInit(
         first_name=ctx.first_name,
         last_name=ctx.last_name,
     )
-    await _send_welcome_message(ctx.tg_chat_id, messenger)
+    await _send_welcome_message(ctx.tg_chat_id, messenger, ctx.tg_user_id, ctx.username)
 
 
-async def _send_welcome_message(chat_id: int, messenger: Messenger):
-    text = (
-        "<b>Welcome to Centpai!</b>\n\n"
-        "Tap a button below or enter a command to get started:\n\n" + COMMANDS_TEXT
-    )
+def _callback_data(action: str, user_id: int) -> str:
+    return f"{action}:{user_id}"
 
-    keyboard = {
+
+def _build_menu_keyboard(user_id: int) -> dict:
+    return {
         "inline_keyboard": [
-            [{"text": "Join Group", "callback_data": "join_group"}],
-            [{"text": "Leave Group", "callback_data": "leave_group"}],
+            [{"text": "Join Group", "callback_data": _callback_data("join_group", user_id)}],
+            [{"text": "Leave Group", "callback_data": _callback_data("leave_group", user_id)}],
+            [{"text": "Add Expense", "callback_data": _callback_data("add_expense", user_id)}],
             [
                 {
                     "text": "View Expenses Breakdown",
-                    "callback_data": "view_expenses_breakdown",
+                    "callback_data": _callback_data("view_expenses_breakdown", user_id),
                 }
             ],
-            [{"text": "Help", "callback_data": "help"}],
+            [{"text": "Help", "callback_data": _callback_data("help", user_id)}],
         ]
     }
+
+
+async def _send_welcome_message(
+    chat_id: int, messenger: Messenger, user_id: int, username: str | None = None
+):
+    text = text_with_user_greeting(
+        ctx=TgContext(
+            tg_chat_id=chat_id,
+            tg_user_id=user_id,
+            username=username or "",
+            first_name=None,
+            last_name=None,
+            message_id=None,
+            text=None,
+        ),
+        text="<b>Welcome to Centpai!</b>\n\n"
+        "Tap a button below or enter a command to get started:\n\n"
+        + COMMANDS_TEXT,
+    )
+
+    keyboard = _build_menu_keyboard(user_id)
 
     await messenger.send_message(
         chat_id=chat_id, text=text, reply_markup=keyboard, parse_mode="HTML"
