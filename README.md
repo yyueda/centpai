@@ -4,7 +4,7 @@
 
 # Centpai
 
-[𝙷𝚘𝚠 𝚝𝚘 Use](#) ✦ [𝙲𝚘𝚗𝚝𝚛𝚒𝚋𝚞𝚝𝚒𝚗𝚐](CONTRIBUTING.md) ✦ [𝙲𝚘𝚗𝚝𝚛𝚒𝚋𝚞𝚝𝚘𝚛𝚜](#contributors) ✦ [𝚂𝚙𝚘𝚗𝚜𝚘𝚛](#sponsor) ✦
+[Getting Started](#getting-started) ✦ [𝙲𝚘𝚗𝚝𝚛𝚒𝚋𝚞𝚝𝚘𝚛𝚜](#contributors) ✦ [𝚂𝚙𝚘𝚗𝚜𝚘𝚛](#sponsor) ✦
 
 Split expenses effortlessly in Telegram with Centpai. Track shared costs, settle balances, and keep everyone in sync — all without leaving your chat.
 
@@ -88,6 +88,12 @@ Split expenses effortlessly in Telegram with Centpai. Track shared costs, settle
    poetry install
    poetry run uvicorn app.main:app --reload
    ```
+
+## Sponsor
+
+If you find Centpai useful, consider supporting its development:
+
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-support-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/calvinchuayh)
 
 ## Contributors
 
