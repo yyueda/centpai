@@ -10,27 +10,16 @@ data "aws_ami" "amazon_linux" {
 
 resource "aws_security_group" "centpai" {
   name        = "centpai-sg"
-  description = "Allow SSH and HTTPS for centpai"
+  description = "Only allow HTTPS from Telegram Official IPs"
 
   ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    from_port = 443
+    to_port   = 443
+    protocol  = "tcp"
+    cidr_blocks = [
+      "91.108.4.0/22",
+      "149.154.160.0/20",
+    ]
   }
 
   egress {
