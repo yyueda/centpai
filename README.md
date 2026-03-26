@@ -4,7 +4,7 @@
 
 # Centpai
 
-[𝙷𝚘𝚠 𝚝𝚘 Use](#) ✦ [𝙲𝚘𝚗𝚝𝚛𝚒𝚋𝚞𝚝𝚘𝚛𝚜](#contributors) ✦ [𝚂𝚙𝚘𝚗𝚜𝚘𝚛](#sponsor) ✦ 
+[𝙷𝚘𝚠 𝚝𝚘 Use](#) ✦ [𝙲𝚘𝚗𝚝𝚛𝚒𝚋𝚞𝚝𝚒𝚗𝚐](CONTRIBUTING.md) ✦ [𝙲𝚘𝚗𝚝𝚛𝚒𝚋𝚞𝚝𝚘𝚛𝚜](#contributors) ✦ [𝚂𝚙𝚘𝚗𝚜𝚘𝚛](#sponsor) ✦
 
 Split expenses effortlessly in Telegram with Centpai. Track shared costs, settle balances, and keep everyone in sync — all without leaving your chat.
 
@@ -34,7 +34,7 @@ Split expenses effortlessly in Telegram with Centpai. Track shared costs, settle
 - [Docker](https://www.docker.com/) (recommended)
 - Python 3.11+ and [Poetry](https://python-poetry.org/)
 - A Telegram bot token from [@BotFather](https://t.me/BotFather)
-- A public URL for the webhook (e.g. [ngrok](https://ngrok.com/))
+- A public URL for the webhook — sign up at [ngrok](https://ngrok.com/) and install the CLI
 
 ### Setup
 
@@ -45,13 +45,35 @@ Split expenses effortlessly in Telegram with Centpai. Track shared costs, settle
    cd centpai
    ```
 
-2. Create a `.env` file in the project root
+2. Create a `.env` file in the project root, following the example given in `.env.example`
 
+   **With Docker:**
    ```env
    BOT_TOKEN=<your telegram bot token>
-   DATABASE_URL=<postgres or sqlite async url>
-   WEBHOOK_URL=<your public webhook url>
-   WEBHOOK_SECRET=<your webhook secret>
+   DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/centpai_db
+   NGROK_URL=<your public webhook url>
+   WEBHOOK_SECRET=<random secret string>
+   ```
+
+   **Without Docker** (use your own Postgres credentials):
+   ```env
+   BOT_TOKEN=<your telegram bot token>
+   DATABASE_URL=postgresql+asyncpg://<user>:<password>@localhost:5432/<database>
+   NGROK_URL=<your public webhook url>
+   WEBHOOK_SECRET=<random secret string>
+   ```
+
+   To get your `NGROK_URL`, run ngrok in a separate terminal and copy the `Forwarding` URL:
+   ```bash
+   ngrok http 8000
+   # Forwarding  https://abc123.ngrok-free.app -> http://localhost:8000
+   ```
+
+   > **Why ngrok?** Telegram's webhook requires a publicly reachable HTTPS URL to push updates to your bot. Since `localhost` isn't accessible from the internet, ngrok creates a secure tunnel that forwards Telegram's requests to your local server.
+
+   You can generate a `WEBHOOK_SECRET` with:
+   ```bash
+   python -c "import secrets; print(secrets.token_hex(32))"
    ```
 
 3. Run with Docker
@@ -60,10 +82,16 @@ Split expenses effortlessly in Telegram with Centpai. Track shared costs, settle
    docker compose -f docker-compose.dev.yml up --build
    ```
 
-   Or without Docker
+   Or without Docker (requires a running Postgres instance on port 5432)
 
    ```bash
    poetry install
    poetry run uvicorn app.main:app --reload
    ```
+
+## Contributors
+
+<a href="https://github.com/yyueda/centpai/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=yyueda/centpai" />
+</a>
 
