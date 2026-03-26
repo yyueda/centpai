@@ -51,7 +51,7 @@ Split expenses effortlessly in Telegram with Centpai. Track shared costs, settle
    ```env
    BOT_TOKEN=<your telegram bot token>
    DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/centpai_db
-   NGROK_URL=<your public webhook url>
+   WEBHOOK_URL=<your public webhook url>
    WEBHOOK_SECRET=<random secret string>
    ```
 
@@ -59,11 +59,11 @@ Split expenses effortlessly in Telegram with Centpai. Track shared costs, settle
    ```env
    BOT_TOKEN=<your telegram bot token>
    DATABASE_URL=postgresql+asyncpg://<user>:<password>@localhost:5432/<database>
-   NGROK_URL=<your public webhook url>
+   WEBHOOK_URL=<your public webhook url>
    WEBHOOK_SECRET=<random secret string>
    ```
 
-   To get your `NGROK_URL`, run ngrok in a separate terminal and copy the `Forwarding` URL:
+   To get your `WEBHOOK_URL`, you can run ngrok in a separate terminal and copy the `Forwarding` URL:
    ```bash
    ngrok http 8000
    # Forwarding  https://abc123.ngrok-free.app -> http://localhost:8000
