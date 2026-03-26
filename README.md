@@ -18,7 +18,7 @@ Split expenses effortlessly in Telegram with Centpai. Track shared costs, settle
 
 ![Stars](https://img.shields.io/github/stars/yyueda/centpai?labelColor=F0F0E8&style=for-the-badge&color=1d4ed8)
 ![Forks](https://img.shields.io/github/forks/yyueda/centpai?labelColor=F0F0E8&style=for-the-badge&color=1d4ed8)
-![Apache 2.0](https://img.shields.io/github/license/yyueda/centpai?labelColor=F0F0E8&style=for-the-badge&color=1d4ed8)
+![MIT](https://img.shields.io/github/license/yyueda/centpai?labelColor=F0F0E8&style=for-the-badge&color=1d4ed8)
 ![version](https://img.shields.io/badge/Version-1.0-FFF?labelColor=F0F0E8&style=for-the-badge&color=1d4ed8)
 
 </div>
