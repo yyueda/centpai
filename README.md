@@ -4,7 +4,7 @@
 
 # Centpai
 
-[Getting Started](#getting-started) ✦ [𝙲𝚘𝚗𝚝𝚛𝚒𝚋𝚞𝚝𝚘𝚛𝚜](#contributors) ✦ [𝚂𝚙𝚘𝚗𝚜𝚘𝚛](#sponsor) ✦
+[𝙷𝚘𝚠 𝚃𝚘 𝚄𝚜𝚎](#how-to-use) ✦ [Getting Started](#getting-started) ✦ [𝙲𝚘𝚗𝚝𝚛𝚒𝚋𝚞𝚝𝚘𝚛𝚜](#contributors) ✦ [𝚂𝚙𝚘𝚗𝚜𝚘𝚛](#sponsor) ✦
 
 Split expenses effortlessly in Telegram with Centpai. Track shared costs, settle balances, and keep everyone in sync — all without leaving your chat.
 
@@ -26,6 +26,15 @@ Split expenses effortlessly in Telegram with Centpai. Track shared costs, settle
 > \[!IMPORTANT]
 >
 > This project is in active development. New features are being added continuously, and we welcome contributions from the community. If you have any suggestions or feature requests, please feel free to open an issue on GitHub.
+
+## How To Use
+
+No setup required — just find [@CentpaiBot](https://t.me/CentpaiBot) on Telegram and add it to any group of your choice. The bot will guide you from there.
+
+1. Search for `@CentpaiBot` on Telegram
+2. Add the bot to your group
+3. Each member runs `/join` to register
+4. Start adding expenses with `/expense_add <Amount> <Category> [split rule]`
 
 ## Getting Started
 
