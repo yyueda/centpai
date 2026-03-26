@@ -1,6 +1,6 @@
 import logging
 from contextlib import asynccontextmanager
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from app.core.middleware import RateLimiterMiddleware
 from app.features.expenses.service import ExpensesService, get_service
 from app.features.telegram.commands.admin import handleHelp, handleInit
@@ -40,7 +40,6 @@ async def lifespan(app: FastAPI):
     app.state.telegram = tg
     yield
 
-    # Cleanup
     await tg.aclose()
 
 
@@ -59,6 +58,10 @@ async def read_webhook(
     update: Update,
     svc: ExpensesService = Depends(get_service),
 ):
+    secret = request.headers.get("X-Telegram-Bot-Api-Secret-Token")
+    if secret != settings.WEBHOOK_SECRET:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
     ctx = build_context_from_update(update)
     if ctx is None:
         return {"ok": True}

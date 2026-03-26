@@ -8,7 +8,11 @@ class Settings(BaseSettings):
 
     BOT_TOKEN: str
     DATABASE_URL: str
+<<<<<<< HEAD
     WEBHOOK_URL: str
+=======
+    NGROK_URL: str
+>>>>>>> cc15d5b (chore: clean up and store all variables in env)
     WEBHOOK_SECRET: str
 
 
