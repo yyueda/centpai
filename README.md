@@ -4,7 +4,7 @@
 
 # Centpai
 
-[𝙷𝚘𝚠 𝚃𝚘 𝚄𝚜𝚎](#how-to-use) ✦ [Getting Started](#getting-started) ✦ [𝙲𝚘𝚗𝚝𝚛𝚒𝚋𝚞𝚝𝚘𝚛𝚜](#contributors) ✦ [𝚂𝚙𝚘𝚗𝚜𝚘𝚛](#sponsor) ✦
+[𝙷𝚘𝚠 𝚃𝚘 𝚄𝚜𝚎](#how-to-use) ✦ [𝙶𝚎𝚝𝚝𝚒𝚗𝚐 𝚂𝚝𝚊𝚛𝚝𝚎𝚍](#getting-started) ✦ [𝙲𝚘𝚗𝚝𝚛𝚒𝚋𝚞𝚝𝚘𝚛𝚜](#contributors) ✦ [𝚂𝚙𝚘𝚗𝚜𝚘𝚛](#sponsor) ✦
 
 Split expenses effortlessly in Telegram with Centpai. Track shared costs, settle balances, and keep everyone in sync — all without leaving your chat.
 
