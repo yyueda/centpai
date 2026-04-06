@@ -96,6 +96,7 @@ services:
       - prometheus_data:/prometheus
     networks:
       - loki
+    restart: unless-stopped
 
 volumes:
   lokidata:
