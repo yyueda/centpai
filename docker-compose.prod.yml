@@ -99,6 +99,7 @@ services:
 
 volumes:
   lokidata:
+  prometheus_data:
 
 networks:
   loki:
