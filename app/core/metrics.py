@@ -17,7 +17,7 @@ active_chats_gauge = Gauge(
 )
 
 command_duration_seconds = Histogram(
-    "command_duration_seconds",
+    "centpai_command_duration_seconds",
     "Time spent processing telegram commands",
     ["command"]
 )

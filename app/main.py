@@ -24,7 +24,7 @@ from app.features.telegram import client
 from app.core.config import settings
 from app.db.database import init_db
 from prometheus_fastapi_instrumentator import Instrumentator
-from app.core.metrics import commands_total
+from app.core.metrics import commands_total, command_duration_seconds
 
 setup_logging()
 logger = logging.getLogger("centpai")
@@ -47,10 +47,11 @@ async def lifespan(app: FastAPI):
 # For prometheus
 @asynccontextmanager
 async def track_command(command: str):
-    try:
-        yield
-    finally:
-        commands_total.labels(command=command).inc()
+    with command_duration_seconds.labels(command=command).time():
+        try:
+            yield
+        finally:
+            commands_total.labels(command=command).inc()
 
 
 app = FastAPI(lifespan=lifespan)
