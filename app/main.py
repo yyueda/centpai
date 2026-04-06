@@ -24,6 +24,7 @@ from app.features.telegram import client
 from app.core.config import settings
 from app.db.database import init_db
 from prometheus_fastapi_instrumentator import Instrumentator
+from app.core.metrics import commands_total
 
 setup_logging()
 logger = logging.getLogger("centpai")
@@ -42,6 +43,14 @@ async def lifespan(app: FastAPI):
     yield
 
     await tg.aclose()
+
+# For prometheus
+@asynccontextmanager
+async def track_command(command: str):
+    try:
+        yield
+    finally:
+        commands_total.labels(command=command).inc()
 
 
 app = FastAPI(lifespan=lifespan)
@@ -90,25 +99,34 @@ async def read_webhook(
             if command:
                 match command.name:
                     case CommandName.MEMBERS:
-                        await handleListMembers(ctx, tg, svc)
+                        async with track_command("/members"):
+                            await handleListMembers(ctx, tg, svc)
                     case CommandName.LEAVE:
-                        await handleLeave(ctx, tg, svc)
+                        async with track_command("/leave"):
+                            await handleLeave(ctx, tg, svc)
                     case CommandName.HELP:
-                        await handleHelp(ctx, tg)
+                        async with track_command("/help"):
+                            await handleHelp(ctx, tg)
                     case CommandName.JOIN:
-                        await handleJoin(ctx, tg, svc)
+                        async with track_command("/join"):
+                            await handleJoin(ctx, tg, svc)
                     case CommandName.EXPENSE_ADD:
-                        await handleAddExpense(
-                            ctx, tg, svc, command.args, command.mentioned_usernames
+                        async with track_command("/add_expense"):
+                            await handleAddExpense(
+                                ctx, tg, svc, command.args, command.mentioned_usernames
                         )
                     case CommandName.EXPENSE_VIEW:
-                        await handleListExpenses(ctx, tg, svc)
+                        async with track_command("/view_expenses"):
+                            await handleListExpenses(ctx, tg, svc)
                     case CommandName.EXPENSE_REMOVE:
-                        await handleRemoveExpense(ctx, tg, svc, command.args)
+                        async with track_command("/remove_expense"):
+                            await handleRemoveExpense(ctx, tg, svc, command.args)
                     case CommandName.PAY:
-                        await handlePay(ctx, tg, svc, command.args)
+                        async with track_command("/pay"):
+                            await handlePay(ctx, tg, svc, command.args)
                     case CommandName.DEBTS:
-                        await handleDebts(ctx, tg, svc, command.args)
+                        async with track_command("/debts"):
+                            await handleDebts(ctx, tg, svc, command.args)
 
                 return {"ok": True}
 

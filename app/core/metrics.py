@@ -3,7 +3,7 @@ from prometheus_client import Counter, Gauge, Histogram
 commands_total = Counter(
     "centpai_commands_total",
     "Total number of telegram commands processed",
-    ["command", "status"],
+    ["command"] 
 )
 
 active_members_gauge = Gauge(
