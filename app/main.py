@@ -23,6 +23,7 @@ from app.core.logging import setup_logging
 from app.features.telegram import client
 from app.core.config import settings
 from app.db.database import init_db
+from prometheus_fastapi_instrumentator import Instrumentator
 
 setup_logging()
 logger = logging.getLogger("centpai")
@@ -45,6 +46,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 app.add_middleware(RateLimiterMiddleware)
+Instrumentator().instrument(app).expose(app)
 
 
 @app.get("/health")
