@@ -44,6 +44,7 @@ async def lifespan(app: FastAPI):
 
     await tg.aclose()
 
+
 # For prometheus
 @asynccontextmanager
 async def track_command(command: str):
@@ -115,7 +116,7 @@ async def read_webhook(
                         async with track_command("/add_expense"):
                             await handleAddExpense(
                                 ctx, tg, svc, command.args, command.mentioned_usernames
-                        )
+                            )
                     case CommandName.EXPENSE_VIEW:
                         async with track_command("/view_expenses"):
                             await handleListExpenses(ctx, tg, svc)
