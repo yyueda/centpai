@@ -57,7 +57,12 @@ async def track_command(command: str):
 
 app = FastAPI(lifespan=lifespan)
 app.add_middleware(RateLimiterMiddleware)
-Instrumentator().instrument(app).expose(app)
+Instrumentator(
+    should_group_status_codes=True,
+    excluded_handlers=["/metrics", "/health"],
+    inprogress_name="centpai_inprogress_requests",
+    inprogress_labels=True,
+).instrument(app).expose(app)
 
 
 @app.get("/health")
