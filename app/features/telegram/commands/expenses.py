@@ -85,9 +85,7 @@ def parse_amount(amount: str) -> Decimal:
     try:
         return Decimal(amount).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     except InvalidOperation:
-        raise ValueError(
-            "Please input a valid amount. Usage: /expense_add <amount> <desc>."
-        )
+        raise ValueError("Please input a valid amount. Usage: /add <amount> <desc>.")
 
 
 def parse_id(id: str) -> int:
@@ -260,7 +258,7 @@ async def handlePay(
 
 
 async def handleDebts(
-    ctx: TgContext, messenger: Messenger, svc: ExpensesService, args: list[str] = []
+    ctx: TgContext, messenger: Messenger, svc: ExpensesService
 ) -> None:
     try:
         simplified_debts = await svc.get_simplified_debts(ctx.tg_chat_id)
