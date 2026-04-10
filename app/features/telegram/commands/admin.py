@@ -13,7 +13,7 @@ COMMANDS_TEXT = (
     "/remove @user — remove a member\n\n"
     "💰 <b>Expenses</b>\n"
     "/expense_view — view all expenses breakdown\n\n"
-    "/expense_add <code>&lt;Category&gt; &lt;Amount&gt; [split rule]</code> — add an expense\n"
+    "/expense_add <code>&lt;Amount&gt; &lt;Category&gt; [split rule]</code> — add an expense\n"
     "<i>Example:</i> <code>/expense_add 48.50 Dinner</code>\n\n"
     "/expense_remove <code>&lt;Expense ID&gt;</code> — remove an expense by ID\n\n"
     "/pay <code>@user &lt;amount&gt;</code> — record a payment you made to a user\n"
@@ -32,7 +32,7 @@ COMMANDS_TEXT = (
     "────────────────────\n"
     "🚀 <b>Project Status</b>\n"
     "This project is in active development. New features are being added continuously, and we welcome contributions from the community. If you have any suggestions or feature requests, please feel free to open an issue on GitHub.\n\n"
-    "🌐 <b>Github:</b> https://github.com/yyueda/centpai"
+    "🌐 <b>Github:</b> https://github.com/Centpai-Devs/centpai"
 )
 
 
