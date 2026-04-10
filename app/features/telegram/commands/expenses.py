@@ -16,11 +16,11 @@ async def handleAddExpense(
     if not args:
         await messenger.send_message(
             ctx.tg_chat_id,
-            "Usage: /expense_add <amount> <desc>",
+            "Usage: /add <amount> <desc>",
             reply_to_message_id=ctx.message_id,
             reply_markup={
                 "force_reply": True,
-                "input_field_placeholder": "/expense_add <amount> <description>",
+                "input_field_placeholder": "/add <amount> <description>",
                 "selective": True
             },
         )
@@ -184,11 +184,11 @@ async def handleRemoveExpense(
     if not args:
         await messenger.send_message(
             ctx.tg_chat_id,
-            "Usage: /expense_remove <Expense ID>",
+            "Usage: /remove <Expense ID>",
             reply_to_message_id=ctx.message_id,
             reply_markup={
                 "force_reply": True,
-                "input_field_placeholder": "/expense_remove <Expense ID>",
+                "input_field_placeholder": "/remove <Expense ID>",
                 "selective": True
             },
         )
