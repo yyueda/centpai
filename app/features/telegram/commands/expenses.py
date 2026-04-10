@@ -18,6 +18,11 @@ async def handleAddExpense(
             ctx.tg_chat_id,
             "Usage: /expense_add <amount> <desc>",
             reply_to_message_id=ctx.message_id,
+            reply_markup={
+                "force_reply": True,
+                "input_field_placeholder": "/expense_add <amount> <description>",
+                "selective": True
+            },
         )
         return
 
@@ -181,6 +186,11 @@ async def handleRemoveExpense(
             ctx.tg_chat_id,
             "Usage: /expense_remove <Expense ID>",
             reply_to_message_id=ctx.message_id,
+            reply_markup={
+                "force_reply": True,
+                "input_field_placeholder": "/expense_remove <Expense ID>",
+                "selective": True
+            },
         )
         return
 
@@ -216,6 +226,11 @@ async def handlePay(
             ctx.tg_chat_id,
             "Usage: /pay @user <amount>",
             reply_to_message_id=ctx.message_id,
+            reply_markup={
+                "force_reply": True,
+                "input_field_placeholder": "/pay @user <amount>",
+                "selective": True
+            },
         )
         return
 
