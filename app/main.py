@@ -106,7 +106,7 @@ async def read_webhook(
                     case CommandName.PAY:
                         await handlePay(ctx, tg, svc, command.args)
                     case CommandName.DEBTS:
-                        await handleDebts(ctx, tg, svc, command.args)
+                        await handleDebts(ctx, tg, svc)
 
                 return {"ok": True}
 
@@ -123,15 +123,22 @@ async def read_webhook(
                 )
                 return {"ok": True}
 
-            match data:
-                case "join_group":
-                    await handleJoin(ctx, tg, svc)
-                case "leave_group":
-                    await handleLeave(ctx, tg, svc)
-                case "view_expenses_breakdown":
-                    await handleListExpenses(ctx, tg, svc)
-                case "help":
-                    await handleHelp(ctx, tg)
+            try:
+                match data:
+                    case "join":
+                        await handleJoin(ctx, tg, svc)
+                    case "leave":
+                        await handleLeave(ctx, tg, svc)
+                    case "view":
+                        await handleListExpenses(ctx, tg, svc)
+                    case "debts":
+                        await handleDebts(ctx, tg, svc)
+                    case "help":
+                        await handleHelp(ctx, tg)
+            finally:
+                # After the user presses a callback button, Telegram clients will display a progress bar until you call answerCallbackQuery.
+                # It is, therefore, necessary to react by calling answerCallbackQuery even if no notification to the user is needed
+                await tg.answer_callback_query(callback_query_id=callback_id)
     except Exception:
         logger.exception("Failed to handle update %s", update.update_id)
 

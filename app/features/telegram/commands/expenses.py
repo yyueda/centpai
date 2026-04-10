@@ -16,8 +16,13 @@ async def handleAddExpense(
     if not args:
         await messenger.send_message(
             ctx.tg_chat_id,
-            "Usage: /expense_add <amount> <desc>",
+            "Usage: /add <amount> <desc>",
             reply_to_message_id=ctx.message_id,
+            reply_markup={
+                "force_reply": True,
+                "input_field_placeholder": "/add <amount> <description>",
+                "selective": True,
+            },
         )
         return
 
@@ -80,9 +85,7 @@ def parse_amount(amount: str) -> Decimal:
     try:
         return Decimal(amount).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     except InvalidOperation:
-        raise ValueError(
-            "Please input a valid amount. Usage: /expense_add <amount> <desc>."
-        )
+        raise ValueError("Please input a valid amount. Usage: /add <amount> <desc>.")
 
 
 def parse_id(id: str) -> int:
@@ -179,8 +182,13 @@ async def handleRemoveExpense(
     if not args:
         await messenger.send_message(
             ctx.tg_chat_id,
-            "Usage: /expense_remove <Expense ID>",
+            "Usage: /remove <Expense ID>",
             reply_to_message_id=ctx.message_id,
+            reply_markup={
+                "force_reply": True,
+                "input_field_placeholder": "/remove <Expense ID>",
+                "selective": True,
+            },
         )
         return
 
@@ -216,6 +224,11 @@ async def handlePay(
             ctx.tg_chat_id,
             "Usage: /pay @user <amount>",
             reply_to_message_id=ctx.message_id,
+            reply_markup={
+                "force_reply": True,
+                "input_field_placeholder": "/pay @user <amount>",
+                "selective": True,
+            },
         )
         return
 
@@ -245,7 +258,7 @@ async def handlePay(
 
 
 async def handleDebts(
-    ctx: TgContext, messenger: Messenger, svc: ExpensesService, args: list[str]
+    ctx: TgContext, messenger: Messenger, svc: ExpensesService
 ) -> None:
     try:
         simplified_debts = await svc.get_simplified_debts(ctx.tg_chat_id)

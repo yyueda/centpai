@@ -10,9 +10,9 @@ class CommandName(StrEnum):
     HELP = "/help"
     JOIN = "/join"
     LEAVE = "/leave"
-    EXPENSE_ADD = "/expense_add"
-    EXPENSE_VIEW = "/expense_view"
-    EXPENSE_REMOVE = "/expense_remove"
+    EXPENSE_ADD = "/add"
+    EXPENSE_VIEW = "/view"
+    EXPENSE_REMOVE = "/remove"
     PAY = "/pay"
     DEBTS = "/debts"
 
