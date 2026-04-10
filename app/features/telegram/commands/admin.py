@@ -8,7 +8,7 @@ COMMANDS_TEXT = (
     "/help — show this help message\n"
     "/join — register yourself in this group\n"
     "/leave — leave the current group\n"
-    "/members — list members in this chat\n"
+    "/members — list members in this chat\n\n"
     "💰 <b>Expenses</b>\n"
     "/view — view all expenses breakdown\n\n"
     "/add <code>&lt;Amount&gt; &lt;Category&gt; [split rule]</code> — add an expense\n"
@@ -35,7 +35,21 @@ COMMANDS_TEXT = (
 
 
 async def handleHelp(ctx: TgContext, messenger: Messenger) -> None:
-    await messenger.send_message(ctx.tg_chat_id, COMMANDS_TEXT, parse_mode="HTML")
+    keyboard = {
+        "inline_keyboard": [
+            [
+                {"text": "👋 Join", "callback_data": "join"},
+                {"text": "🚪 Leave", "callback_data": "leave"},
+            ],
+            [
+                {"text": "📊 View Expenses", "callback_data": "view"},
+                {"text": "💸 Debts", "callback_data": "debts"},
+            ],
+            [{"text": "❓ Help", "callback_data": "help"}],
+        ]
+    }
+
+    await messenger.send_message(ctx.tg_chat_id, COMMANDS_TEXT, reply_markup=keyboard, parse_mode="HTML")
 
 
 async def handleInit(
@@ -59,11 +73,15 @@ async def _send_welcome_message(chat_id: int, messenger: Messenger):
 
     keyboard = {
         "inline_keyboard": [
-            [{"text": "Join Group", "callback_data": "join"}],
-            [{"text": "Leave Group", "callback_data": "leave"}],
-            [{"text": "View Expenses Breakdown", "callback_data": "view"}],
-            [{"text": "List Debts", "callback_data": "debts"}],
-            [{"text": "Help", "callback_data": "help"}],
+            [
+                {"text": "👋 Join", "callback_data": "join"},
+                {"text": "🚪 Leave", "callback_data": "leave"},
+            ],
+            [
+                {"text": "📊 View Expenses", "callback_data": "view"},
+                {"text": "💸 Debts", "callback_data": "debts"},
+            ],
+            [{"text": "❓ Help", "callback_data": "help"}],
         ]
     }
 
