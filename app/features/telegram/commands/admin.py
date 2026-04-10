@@ -59,14 +59,10 @@ async def _send_welcome_message(chat_id: int, messenger: Messenger):
 
     keyboard = {
         "inline_keyboard": [
-            [{"text": "Join Group", "callback_data": "join_group"}],
-            [{"text": "Leave Group", "callback_data": "leave_group"}],
-            [
-                {
-                    "text": "View Expenses Breakdown",
-                    "callback_data": "view_expenses_breakdown",
-                }
-            ],
+            [{"text": "Join Group", "callback_data": "join"}],
+            [{"text": "Leave Group", "callback_data": "leave"}],
+            [{"text": "View Expenses Breakdown", "callback_data": "view"}],
+            [{"text": "List Debts", "callback_data": "debts"}],
             [{"text": "Help", "callback_data": "help"}],
         ]
     }

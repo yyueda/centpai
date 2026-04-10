@@ -260,7 +260,7 @@ async def handlePay(
 
 
 async def handleDebts(
-    ctx: TgContext, messenger: Messenger, svc: ExpensesService, args: list[str]
+    ctx: TgContext, messenger: Messenger, svc: ExpensesService, args: list[str] = []
 ) -> None:
     try:
         simplified_debts = await svc.get_simplified_debts(ctx.tg_chat_id)
