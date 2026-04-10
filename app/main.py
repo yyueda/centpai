@@ -136,7 +136,7 @@ async def read_webhook(
                     case "help":
                         await handleHelp(ctx, tg)
             finally:
-                # After the user presses a callback button, Telegram clients will display a progress bar until you call answerCallbackQuery. 
+                # After the user presses a callback button, Telegram clients will display a progress bar until you call answerCallbackQuery.
                 # It is, therefore, necessary to react by calling answerCallbackQuery even if no notification to the user is needed
                 await tg.answer_callback_query(callback_query_id=callback_id)
     except Exception:

@@ -21,7 +21,7 @@ async def handleAddExpense(
             reply_markup={
                 "force_reply": True,
                 "input_field_placeholder": "/add <amount> <description>",
-                "selective": True
+                "selective": True,
             },
         )
         return
@@ -189,7 +189,7 @@ async def handleRemoveExpense(
             reply_markup={
                 "force_reply": True,
                 "input_field_placeholder": "/remove <Expense ID>",
-                "selective": True
+                "selective": True,
             },
         )
         return
@@ -229,7 +229,7 @@ async def handlePay(
             reply_markup={
                 "force_reply": True,
                 "input_field_placeholder": "/pay @user <amount>",
-                "selective": True
+                "selective": True,
             },
         )
         return

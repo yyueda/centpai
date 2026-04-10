@@ -49,7 +49,9 @@ async def handleHelp(ctx: TgContext, messenger: Messenger) -> None:
         ]
     }
 
-    await messenger.send_message(ctx.tg_chat_id, COMMANDS_TEXT, reply_markup=keyboard, parse_mode="HTML")
+    await messenger.send_message(
+        ctx.tg_chat_id, COMMANDS_TEXT, reply_markup=keyboard, parse_mode="HTML"
+    )
 
 
 async def handleInit(
