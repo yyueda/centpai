@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import Depends, FastAPI, HTTPException, Request
 from app.core.middleware import RateLimiterMiddleware
+from app.features.expenses.jobs import send_reminder
 from app.features.expenses.repo import ExpensesRepository
 from app.features.expenses.service import ExpensesService, get_service
 from app.features.telegram.commands.admin import handleHelp, handleInit
@@ -22,7 +23,6 @@ from app.features.telegram.commands.members import (
 from app.features.telegram.commands.reminders import (
     handleSetReminder,
     handleRemoveReminder,
-    send_reminder,
 )
 from app.features.telegram.context import build_context_from_update
 from app.features.telegram.schemas import Update
@@ -60,7 +60,7 @@ async def lifespan(app: FastAPI):
                 minute=int(minute),
                 timezone="UTC",
                 args=[tg, reminder.chat.telegram_chat_id],
-                id=f"reminder_{reminder.chat_id}",
+                id=f"reminder_{reminder.chat.telegram_chat_id}",
                 replace_existing=True,
             )
 
