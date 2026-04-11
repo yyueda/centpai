@@ -15,6 +15,8 @@ class CommandName(StrEnum):
     EXPENSE_REMOVE = "/remove"
     PAY = "/pay"
     DEBTS = "/debts"
+    REMIND = "/remind"
+    REMIND_OFF = "/remindoff"
 
 
 @dataclass(frozen=True)  # Immutable

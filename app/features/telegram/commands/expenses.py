@@ -65,10 +65,21 @@ async def handleAddExpense(
                     f"• <b>{b.username}</b> is owed <code>${b.balance}</code> in total"
                 )
 
+        keyboard = {
+            "inline_keyboard": [
+                [
+                    {"text": "📊 View Expenses", "callback_data": "view"},
+                    {"text": "💸 Debts", "callback_data": "debts"},
+                ],
+                [{"text": "❓ Help", "callback_data": "help"}],
+            ]
+        }
+
         await messenger.send_message(
             chat_id=ctx.tg_chat_id,
             text="\n".join(lines),
             reply_to_message_id=ctx.message_id,
+            reply_markup=keyboard,
             parse_mode="HTML",
         )
     except ValueError as e:
@@ -196,10 +207,21 @@ async def handleRemoveExpense(
         expense_id = parse_id(args[0])
         await svc.remove_expense(ctx.tg_chat_id, ctx.tg_user_id, expense_id)
 
+        keyboard = {
+            "inline_keyboard": [
+                [
+                    {"text": "📊 View Expenses", "callback_data": "view"},
+                    {"text": "💸 Debts", "callback_data": "debts"},
+                ],
+                [{"text": "❓ Help", "callback_data": "help"}],
+            ]
+        }
+
         await messenger.send_message(
             chat_id=ctx.tg_chat_id,
             text=f"Expense <code>#{expense_id}</code> removed.",
             reply_to_message_id=ctx.message_id,
+            reply_markup=keyboard,
             parse_mode="HTML",
         )
     except ValueError as e:
@@ -237,10 +259,21 @@ async def handlePay(
         amount = parse_amount(args[1])
         await svc.process_payment(ctx.tg_chat_id, ctx.tg_user_id, username, amount)
 
+        keyboard = {
+            "inline_keyboard": [
+                [
+                    {"text": "📊 View Expenses", "callback_data": "view"},
+                    {"text": "💸 Debts", "callback_data": "debts"},
+                ],
+                [{"text": "❓ Help", "callback_data": "help"}],
+            ]
+        }
+
         await messenger.send_message(
             chat_id=ctx.tg_chat_id,
             text=f"✅ <code>${amount}</code> paid to <b>{username}</b>.",
             reply_to_message_id=ctx.message_id,
+            reply_markup=keyboard,
             parse_mode="HTML",
         )
     except ValueError as e:

@@ -2,43 +2,10 @@ import httpx
 import logging
 from typing import Any, Dict, List, Optional, Protocol
 import collections
-import uuid
 
 logger = logging.getLogger("telegram")
 
 BASE = "https://api.telegram.org"
-
-COMMANDS_TEXT = (
-    "📋 Commands\n"
-    "────────────────────\n\n"
-    "👥 Administrative\n"
-    "/help — show this help message\n"
-    "/join — register yourself in this group\n"
-    "/leave — leave the current group\n"
-    "/members — list members in this chat\n"
-    "/add @user — add a member\n"
-    "/remove @user — remove a member\n"
-    "/home — view group status and net balances\n\n"
-    "💰 Expenses\n"
-    "/expense_view — view all expenses breakdown\n"
-    "/expense_add <Category> <Amount> [split rule] — add an expense\n"
-    "  Example: /expense_add Dinner 48.50\n\n"
-    "/expense_remove <Expense ID> — remove an expense by ID\n\n"
-    "/pay @user <amount> — record a payment you made to a user\n"
-    "  Example: /pay @John 25\n\n"
-    "🔀 Split Rules (optional)\n"
-    "If omitted, expense is split equally among everyone.\n\n"
-    "• Equal split (default):\n"
-    "  /expense_add Dinner 48.50\n\n"
-    "• Equal split among selected users:\n"
-    "  @John @Ben @Calvin @Dylan\n\n"
-    "• Exact amounts:\n"
-    "  @John=10 @Ben=20 @Dylan=18.5\n\n"
-    "• Percentages:\n"
-    "  @John=50% @Ben=50%\n\n"
-    "• Shares:\n"
-    "  @John=2 @Ben=1 @Dylan=1\n"
-)
 
 
 # Interface for easier testing
@@ -63,8 +30,16 @@ class TelegramAPI:
             {"command": "help", "description": "Show help and examples"},
             {"command": "join", "description": "Join this group"},
             {"command": "leave", "description": "Leave the group"},
-            {"command": "expense_add", "description": "Add an expense"},
-            {"command": "expense_view", "description": "View all expenses"},
+            {"command": "members", "description": "List members in chat"},
+            {"command": "add", "description": "Add an expense"},
+            {"command": "view", "description": "View all expenses"},
+            {"command": "pay", "description": "Pay a debt"},
+            {"command": "debts", "description": "Get simplified debts"},
+            {
+                "command": "remind",
+                "description": "Set a daily debt reminder (HH:MM UTC)",
+            },
+            {"command": "remindoff", "description": "Cancel the daily reminder"},
         ]
 
     async def aclose(self) -> None:
