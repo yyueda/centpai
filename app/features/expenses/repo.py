@@ -13,6 +13,7 @@ from app.features.expenses.models import (
     Expense,
     ExpenseSplit,
     Payment,
+    Reminder,
     User,
 )
 
@@ -317,3 +318,33 @@ class ExpensesRepository:
         to_user_balance.balance -= amount
 
         await self.db.flush()
+
+    # ------------------------------------------------------------------
+    # REMINDERS
+    # ------------------------------------------------------------------
+
+    async def upsert_reminder(self, chat_id: int, remind_time: str) -> Reminder:
+        stmt = select(Reminder).where(Reminder.chat_id == chat_id)
+        existing = await self.db.scalar(stmt)
+        if existing:
+            existing.remind_time = remind_time
+            await self.db.flush()
+            return existing
+        reminder = Reminder(chat_id=chat_id, remind_time=remind_time)
+        self.db.add(reminder)
+        await self.db.flush()
+        return reminder
+
+    async def delete_reminder(self, chat_id: int) -> bool:
+        stmt = select(Reminder).where(Reminder.chat_id == chat_id)
+        reminder = await self.db.scalar(stmt)
+        if reminder is None:
+            return False
+        await self.db.delete(reminder)
+        await self.db.flush()
+        return True
+
+    async def get_all_reminders(self) -> list[Reminder]:
+        stmt = select(Reminder).options(selectinload(Reminder.chat))
+        res = await self.db.scalars(stmt)
+        return list(res.all())

@@ -39,6 +39,9 @@ class Chat(Base):
     balances: Mapped[list["Balance"]] = relationship(
         back_populates="chat", cascade="all, delete-orphan"
     )
+    reminder: Mapped["Reminder | None"] = relationship(
+        back_populates="chat", cascade="all, delete-orphan", uselist=False
+    )
 
 
 class User(Base):
@@ -185,3 +188,22 @@ class Balance(Base):
 
     chat: Mapped["Chat"] = relationship(back_populates="balances")
     user: Mapped["User"] = relationship(back_populates="balances")
+
+
+class Reminder(Base):
+    """
+    Daily debt reminder scheduled time per chat (one per chat, stored in UTC HH:MM)
+    """
+
+    __tablename__ = "reminders"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    chat_id: Mapped[int] = mapped_column(
+        ForeignKey("chats.id", ondelete="CASCADE"), unique=True, index=True
+    )
+    remind_time: Mapped[str] = mapped_column(String(5), nullable=False)  # "HH:MM" UTC
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+
+    chat: Mapped["Chat"] = relationship(back_populates="reminder")

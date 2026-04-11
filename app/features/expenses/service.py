@@ -378,6 +378,58 @@ class ExpensesService:
             await self.repo.db.commit()
 
     # ------------------------------------------------------------------
+    # REMINDERS
+    # ------------------------------------------------------------------
+
+    async def set_reminder(
+        self, tg_chat_id: int, tg_user_id: int, remind_time: str
+    ) -> None:
+        await self.repo.db.begin()
+        try:
+            user = await self.repo.get_user_by_tg_id(tg_user_id)
+            if not user:
+                raise UserNotRegistered()
+
+            chat = await self.repo.get_chat_by_tg_id(tg_chat_id)
+            if not chat:
+                raise ChatNotFound()
+
+            is_member = await self.repo.is_member(chat.id, user.id)
+            if not is_member:
+                raise NotMember()
+
+            await self.repo.upsert_reminder(chat.id, remind_time)
+        except DomainError:
+            await self.repo.db.rollback()
+            raise
+        else:
+            await self.repo.db.commit()
+
+    async def remove_reminder(self, tg_chat_id: int, tg_user_id: int) -> bool:
+        await self.repo.db.begin()
+        try:
+            user = await self.repo.get_user_by_tg_id(tg_user_id)
+            if not user:
+                raise UserNotRegistered()
+
+            chat = await self.repo.get_chat_by_tg_id(tg_chat_id)
+            if not chat:
+                raise ChatNotFound()
+
+            is_member = await self.repo.is_member(chat.id, user.id)
+            if not is_member:
+                raise NotMember()
+
+            deleted = await self.repo.delete_reminder(chat.id)
+        except DomainError:
+            await self.repo.db.rollback()
+            raise
+        else:
+            await self.repo.db.commit()
+
+        return deleted
+
+    # ------------------------------------------------------------------
     # HELPERS
     # ------------------------------------------------------------------
 
