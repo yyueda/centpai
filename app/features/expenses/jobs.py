@@ -7,6 +7,7 @@ from app.features.telegram.client import TelegramAPI
 
 logger = logging.getLogger("centpai")
 
+
 async def send_reminder(tg: TelegramAPI, tg_chat_id: int) -> None:
     async with SessionLocal() as session:
         repo = ExpensesRepository(session)
@@ -27,6 +28,7 @@ async def send_reminder(tg: TelegramAPI, tg_chat_id: int) -> None:
                 lines.append(
                     f"• <b>{d.from_user}</b> ---> <b>{d.to_user}</b> <code>${d.amount}</code>"
                 )
+            lines.append("PAY UP!!!")
 
             await tg.send_message(
                 chat_id=tg_chat_id,

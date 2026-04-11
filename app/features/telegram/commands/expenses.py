@@ -273,7 +273,7 @@ async def handlePay(
             chat_id=ctx.tg_chat_id,
             text=f"✅ <code>${amount}</code> paid to <b>{username}</b>.",
             reply_to_message_id=ctx.message_id,
-            reply_markup= keyboard,
+            reply_markup=keyboard,
             parse_mode="HTML",
         )
     except ValueError as e:
