@@ -1,7 +1,9 @@
 import logging
 from contextlib import asynccontextmanager
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import Depends, FastAPI, HTTPException, Request
 from app.core.middleware import RateLimiterMiddleware
+from app.features.expenses.repo import ExpensesRepository
 from app.features.expenses.service import ExpensesService, get_service
 from app.features.telegram.commands.admin import handleHelp, handleInit
 from app.features.telegram.commands.command_parser import CommandName, parse_command
@@ -17,12 +19,17 @@ from app.features.telegram.commands.members import (
     handleLeave,
     handleListMembers,
 )
+from app.features.telegram.commands.reminders import (
+    handleSetReminder,
+    handleRemoveReminder,
+    send_reminder,
+)
 from app.features.telegram.context import build_context_from_update
 from app.features.telegram.schemas import Update
 from app.core.logging import setup_logging
 from app.features.telegram import client
 from app.core.config import settings
-from app.db.database import init_db
+from app.db.database import SessionLocal, init_db
 
 setup_logging()
 logger = logging.getLogger("centpai")
@@ -37,9 +44,32 @@ async def lifespan(app: FastAPI):
     await tg.set_webhook(
         url=f"{settings.WEBHOOK_URL}/webhook", secret_token=settings.WEBHOOK_SECRET
     )
+
+    scheduler = AsyncIOScheduler()
+
+    # Re-register all existing reminders from DB
+    async with SessionLocal() as session:
+        repo = ExpensesRepository(session)
+        reminders = await repo.get_all_reminders()
+        for reminder in reminders:
+            hour, minute = reminder.remind_time.split(":")
+            scheduler.add_job(
+                send_reminder,
+                "cron",
+                hour=int(hour),
+                minute=int(minute),
+                timezone="UTC",
+                args=[tg, reminder.chat.telegram_chat_id],
+                id=f"reminder_{reminder.chat_id}",
+                replace_existing=True,
+            )
+
+    scheduler.start()
     app.state.telegram = tg
+    app.state.scheduler = scheduler
     yield
 
+    scheduler.shutdown()
     await tg.aclose()
 
 
@@ -66,6 +96,7 @@ async def read_webhook(
     if ctx is None:
         return {"ok": True}
     tg: client.TelegramAPI = request.app.state.telegram
+    scheduler: AsyncIOScheduler = request.app.state.scheduler
 
     # For initial welcome message
     if update.my_chat_member:
@@ -107,6 +138,10 @@ async def read_webhook(
                         await handlePay(ctx, tg, svc, command.args)
                     case CommandName.DEBTS:
                         await handleDebts(ctx, tg, svc)
+                    case CommandName.REMIND:
+                        await handleSetReminder(ctx, tg, svc, scheduler, command.args)
+                    case CommandName.REMIND_OFF:
+                        await handleRemoveReminder(ctx, tg, svc, scheduler)
 
                 return {"ok": True}
 
